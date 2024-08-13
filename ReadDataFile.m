@@ -50,7 +50,7 @@ end
 %ext = lower(ext);
 
 if (strcmp(ext,'.wav'))
-    [dat,fs]=wavread(fullfname);
+    [dat,fs]=audioread(fullfname);
     ISR=0;chan=0;
 elseif (strcmp(ext,'.ebin'))
     [dat,fs]=ReadEbinFile(fullfname);
@@ -77,7 +77,7 @@ elseif (strcmp(ext,'.rhd'))
 elseif strcmp(ext,'') %For krank files
     [dat,fs] = ReadOKrankData(nm,1);
 else
-    [dat,fs]=wavread(fullfname);
+    [dat,fs]=audioread(fullfname);
     ext = '.wav';
     ISR=0;chan=0;
 end
@@ -86,15 +86,15 @@ if length(varargout) == 0
     varargout{1} = [];
 end
 
-% if (chan ~= -1)
-%     if (ISR==0)
-%         wchan = chan + 1;
-%     else
-%         wchan = size(dat,2) - chan;
-%     end
-%     
-%     dat = dat(:,wchan);
-% end
+if (chan ~= -1)
+    if (ISR==0)
+        wchan = chan + 1;
+    else
+        wchan = size(dat,2) - chan;
+    end
+    
+    dat = dat(:,wchan);
+end
 return;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%FILT FILE FOR JON %%%%%%%%%%%%%%%%%%%%%%%

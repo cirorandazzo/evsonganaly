@@ -20,35 +20,32 @@ FNAME=handles.INPUTFILES(handles.NFILE).fname;
 chanspec=handles.ChanSpec;
 %PJ added addtlOut for reading triggers on separate channel
 [dat,Fs,DOFILT,ext,addtlOut]=ReadDataFile(FNAME,chanspec); 
-[stim,fs]=ReadCbinFile(FNAME); % EK - for looking at additional input channels 7.15.19
-
-% enforce number of stim channels
-if length(stim(1, :)) >= 3
-    nStimChans = 3;
+if strcmp(ext,'.cbin')
+    [stim,fs]=ReadCbinFile(FNAME); % EK - for looking at additional input channels 7.15.19
+    stim = stim(:, 2 : end);
+    nChan = length(stim(1, :)); % number of additional input channels
 else
-    nStimChans = length(stim(1, :));
+    stim = []
+    nChan = 0;
 end
-stim = stim(:, 2 : nStimChans);
-nChan = length(stim(1, :)); % number of additional input channels
-
 if length(addtlOut) > 0
-     for chan = 1 : nChan
-        if strcmp(ext,'.rhd')
-        try
-            trig{chan}.trigDat = addtlOut(:, chan);
-            [trig{chan}.pks,trig{chan}.locs] = findpeaks(trigDat);
-            trig{chan}.locsT = trig{chan}.locs./Fs; %s
-            plotIntanTrigs = 1;
-        catch
-            plotIntanTrigs = 0;
+        for chan = 1 : nChan
+            if strcmp(ext,'.rhd')
+            try
+                trig{chan}.trigDat = addtlOut(:, chan);
+                [trig{chan}.pks,trig{chan}.locs] = findpeaks(trigDat);
+                trig{chan}.locsT = trig{chan}.locs./Fs; %s
+                plotIntanTrigs = 1;
+            catch
+                plotIntanTrigs = 0;
+            end
+            elseif strcmp(ext,'.cbin')
+                trig{chan}.trigDat = stim(:, chan);
+                [trig{chan}.pks,trig{chan}.locs] = findpeaks(trig{chan}.trigDat,'MinPeakHeight',1e4);
+                trig{chan}.locsT = trig{chan}.locs./Fs; %s
+                plotIntanTrigs = 1;        
+            end
         end
-        elseif strcmp(ext,'.cbin')
-            trig{chan}.trigDat = stim(:, chan);
-            [trig{chan}.pks,trig{chan}.locs] = findpeaks(trig{chan}.trigDat,'MinPeakHeight',1e4);
-            trig{chan}.locsT = trig{chan}.locs./Fs; %s
-            plotIntanTrigs = 1;        
-        end
-     end
 else
     plotIntanTrigs = 0;
 end
@@ -166,14 +163,15 @@ spectitle=FNAME;
 title(RemoveUnderScore(spectitle));
 
 %plot the smooth power
+
 dsamp=handles.SMUNDERSAMPLE;
 axes(handles.SmoothAxes);hold off;
-semilogy([1:length(sm(1:dsamp:end))]*dsamp/Fs,sm(1:dsamp:end),'b-');hold on;
+semilogy([1:length(sm(1:dsamp:end))]*dsamp/double(Fs),sm(1:dsamp:end),'b-');hold on;
 segs=zeros([length(onsets),3]);
 for ii = 1:length(onsets)
     segs(ii,1)=plot(onsets(ii),threshold,'k+');
     segs(ii,2)=plot(offsets(ii),threshold,'k+');
-    segs(ii,3)=line([onsets(ii),offsets(ii)],[1,1]*threshold,'Color',[0,0,0]);
+    segs(ii,3)=line([onsets(ii),offsets(ii)],[1,1]*double(threshold),'Color',[0,0,0]);
 end
 lltmp = length(sm);
 inds = [fix(0.1*lltmp):fix(0.9*lltmp)];
@@ -199,10 +197,12 @@ if (get(handles.HighLightBtn,'Value')==get(handles.HighLightBtn,'Max'))
 end
 % PJ: Plot intan trigs -- for multiple input channels 7.15.19 EK
 C = {'r', 'c', 'g', 'm'};
-for chan = 1 : nChan
-    axes(handles.LabelAxes); hold on;
-    scatter(trig{chan}.locsT,-1.5.*ones(1,length(trig{chan}.locsT)), 30, C{chan}, 'filled', '^');
-    hold off;drawnow;
+if exist('trig','var')
+    for chan = 1 : nChan
+        axes(handles.LabelAxes); hold on;
+        scatter(trig{chan}.locsT,-1.5.*ones(1,length(trig{chan}.locsT)), 30, C{chan}, 'filled', '^');
+        hold off;drawnow;
+    end
 end
 
 
@@ -231,23 +231,14 @@ if (length(rdata)>0)
     
     % put marker at trigger times
     if (get(handles.ShowTrigBox,'Value')==get(handles.ShowTrigBox,'Max'))
-        axes(handles.LabelAxes);hold on;
-        for ii=1:length(rdata.ttimes)
-            triginfo=char(rdata.pbname(ii));
-
-            stim_trig = ~isempty(findstr(triginfo,'TrigPulse'));
-            catch = isempty(findstr(triginfo,'FB'));
-
-            if stim_trig && ~catch 
-                plot(rdata.ttimes(ii)*1e-3,-1.5,'r+');
-            elseif stim_trig && catch
-                plot(rdata.ttimes(ii)*1e-3,-1.5,'k^');
-            else  % if WNtrig - notcatch 
+            axes(handles.LabelAxes);hold on;
+            for ii=1:length(rdata.ttimes)
                 plot(rdata.ttimes(ii)*1e-3,-1.5,'b^');
-                end
+                if rdata.catch(ii)==1
+                    plot(rdata.ttimes(ii)*1e-3,-1.5,'r^');
+                end;
             end
-        end
-        hold off;drawnow;
+            hold off;drawnow;
     end
 else
     rdata.ttimes=[];

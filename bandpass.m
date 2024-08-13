@@ -43,7 +43,7 @@ if exist('filter_type','var') & strcmp(filter_type,'hanningfir')
   ndelay = fix(nfir/2);
   bfir = fir1(nfir,[F_low*2/Fs, F_high*2/Fs]);
   filtsong = filter(bfir,1,rawsong);  
-elseif strcmp(filter_type,'hanningfirff')
+elseif exist('filter_type','var') & strcmp(filter_type,'hanningfirff')
   nfir = 512;
   ndelay = fix(nfir/2);
   bfir = fir1(nfir,[F_low*2/Fs, F_high*2/Fs]);
@@ -51,7 +51,7 @@ elseif strcmp(filter_type,'hanningfirff')
 else
   % Now using an 8 pole butterworth bandpass filter as default.
   [b,a]=butter(8,[F_low*2/Fs, F_high*2/Fs]);
-  filtsong=filtfilt(b, a, rawsong);
+  filtsong=filtfilt(b, a, rawsong');
 end
   
 if length(rawsong) ~= length(filtsong) 
