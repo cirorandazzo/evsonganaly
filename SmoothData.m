@@ -31,7 +31,7 @@ if (~exist('DOFILT','var'))
 end
 
 if (DOFILT==1)
-    filtsong=bandpass(rawsong,Fs,F_low,F_high,filter_type);
+    filtsong=bandpass_blab(rawsong,Fs,F_low,F_high,filter_type);
 else
     filtsong=rawsong;
 end
