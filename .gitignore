@@ -1,0 +1,11 @@
+# EVSONGANALY GITIGNORE
+#
+# 2024.08.13 CDR
+
+/test_data/
+
+# Windows default autosave extension
+*.asv
+
+# OSX / *nix default autosave extension
+*.m~
