@@ -1,7 +1,12 @@
-function [filtsong]=bandpass(rawsong,Fs,F_low,F_high,varargin)
-%this was rather slow, but gives nice filtereing, now using butterworth
-%bandpass filters song using fir1 and filtfilt
+function [filtsong]=bandpass_blab(rawsong,Fs,F_low,F_high,varargin)
+% this was rather slow, but gives nice filtereing, now using butterworth
+% bandpass filters song using fir1 and filtfilt
 % written in the brainard lab UCSF
+% 
+% filter_type options:
+%   - (default or unrecognized) 8 pole butterworth bandpass
+%   - 'hanningfir'
+%   - 'hanningfirff': uses filtfilt instead of filter
 
 if nargin == 5
   filter_type = varargin{1};
@@ -23,7 +28,7 @@ end
  
 v=version;
 if str2num(v(1)) < 5
-  disp(['warning! bandpass: filtering is lousy with mlab version < 5.xx'])
+  warning(['bandpass_blab: filtering is lousy with mlab version < 5.xx'])
   disp(['current version = ',v]);
 end     
 
@@ -34,7 +39,7 @@ end
 %check to make sure input F_high is OK w/ given sample rate
 if F_high >= .5*Fs-500
    F_high = .5*Fs-1000;
-   disp(['warning! (bandpass): F_high was >= .5*Fs-500']);
+   warning(['bandpass_blab: F_high was >= .5*Fs-500']);
    disp(['F_high has been set to ',num2str(F_high)]);
 end
 
@@ -47,14 +52,16 @@ elseif exist('filter_type','var') & strcmp(filter_type,'hanningfirff')
   nfir = 512;
   ndelay = fix(nfir/2);
   bfir = fir1(nfir,[F_low*2/Fs, F_high*2/Fs]);
-  filtsong = filtfilt(bfir,1,rawsong);  
-else
+  filtsong = filtfilt(bfir,1,rawsong);
+elseif exist('filter_type','var')  % added 2024.08.13 CDR, so there are no surprises.
+  error(append(filter_type, " is not a recognized filter type!"))
+else  % not exist
   % Now using an 8 pole butterworth bandpass filter as default.
   [b,a]=butter(8,[F_low*2/Fs, F_high*2/Fs]);
   filtsong=filtfilt(b, a, rawsong');
 end
   
 if length(rawsong) ~= length(filtsong) 
-  disp(['warning! bandpass: input and output file lengths do not match!']);
+  warning(['bandpass_blab: input and output file lengths do not match!']);
 end
 return;
