@@ -1100,7 +1100,7 @@ if (tmpstruct.DOIT)
     sm=handles.SMOOTHDATA;
     sm(1)=0.0;sm(end)=0.0;
 
-    [onsets,offsets]=SegmentNotesJC(sm,Fs,min_int,min_dur,threshold);
+    [onsets,offsets]=SegmentNotes(sm,Fs,min_int,min_dur,threshold);
     labels = char(ones([1,length(onsets)])*fix('-'));
 
     handles.ONSETS=onsets;
@@ -1756,7 +1756,7 @@ function [lims, p1, p2] = windowSelect(vv, currentAxes)
 function playCbinFile(fName, t0, tf, handles)
     % play a cbin file to default audio output, from t0 to tf (in seconds).
     disp(append("Playing audio for file: ", fName));
-    [y, fs] = ReadCbinFile(fName);
+    [y, fs] = ReadDataFile(fName, 0, 0);
     y = rescale(y,-1,1);  % rescale, otherwise there's clipping
 
     l = length(y); %length in samples

@@ -40,8 +40,8 @@ if (nargout > 1)
     spect_win = nfft;
     noverlap = floor(olap*nfft);
     [spec,f,t] = specgram(filtsong,nfft,Fs,spect_win,noverlap);
-    p = find(abs(spec)<=SPTH);
-    spec(p) = SPTH;
+    spec = abs(spec);
+    spec(spec<=SPTH) = SPTH;
 end
 
 squared_song = filtsong.^2;
