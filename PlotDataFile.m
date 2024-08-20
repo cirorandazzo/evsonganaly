@@ -21,11 +21,11 @@ chanspec=handles.ChanSpec;
 %PJ added addtlOut for reading triggers on separate channel
 [dat,Fs,DOFILT,ext,addtlOut]=ReadDataFile(FNAME,chanspec); 
 if strcmp(ext,'.cbin')
-    [stim,fs]=ReadCbinFile(FNAME); % EK - for looking at additional input channels 7.15.19
+    [stim, fs]=ReadCbinFile(FNAME); % EK - for looking at additional input channels 7.15.19
     stim = stim(:, 2 : end);
     nChan = length(stim(1, :)); % number of additional input channels
 else
-    stim = []
+    stim = [];
     nChan = 0;
 end
 if length(addtlOut) > 0

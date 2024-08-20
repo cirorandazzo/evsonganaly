@@ -85,7 +85,7 @@ guidata(hObject, handles);handles=guidata(hObject);
 %setup 2^8 element colormap
 axes(handles.SpecGramAxes);
 colormap(rand([2^8,3])); % lol its a random colormap, is this just to preallocate?
-colormap('bone');
+colormap(flipud(bone));
 
 %link the x axes
 linkaxes([handles.SpecGramAxes,handles.LabelAxes,handles.SmoothAxes],'x');
@@ -344,7 +344,6 @@ end
 
 %For Labeling
 if (handles.DOLABEL)
-    %onsets = handles.ONSETS; offsets = handles.OFFSETS;
     curlabelind = handles.CurLabelInd;
     txtlbl = handles.LABELTAGS;
 
@@ -438,7 +437,7 @@ if (handles.DOLABEL)
         guidata(hObject,handles);
     else
         if (curlabelind>0)
-            if (length(newlabel>0))
+            if (length(newlabel)>0)
                 set(txtlbl(curlabelind),'String',newlabel);
                 %waitfor(txtlbl(curlabelind),'String',newlabel);
                 handles.LABELS(curlabelind) = newlabel;
@@ -1074,6 +1073,7 @@ function ResegmBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% show current segmenting parameters
 tmpstruct.mindur = handles.MINDUR;
 tmpstruct.minint = handles.MININT;
 tmpstruct.segth  = handles.SEGTH;
@@ -1081,6 +1081,7 @@ tmpstruct.sm_win = handles.SM_WIN;
 
 tmpstruct = ChangeSettings(tmpstruct);
 if (tmpstruct.DOIT)
+    % get new values
     handles.MINDUR=tmpstruct.mindur;
     handles.MININT=tmpstruct.minint;
     handles.SEGTH =tmpstruct.segth;
@@ -1088,54 +1089,65 @@ if (tmpstruct.DOIT)
     guidata(hObject,handles);
     
     fname=handles.INPUTFILES(handles.NFILE).fname;
-    %recdata=readrecf(fname);
-    Fs = handles.FS;
-    min_int=handles.MININT;
-    min_dur=handles.MINDUR;
-    threshold=handles.SEGTH;
-    sm_win=handles.SM_WIN;
 
-    %chanspec=handles.ChanSpec;
-    %[dat,Fs]=ReadDataFile(fname,chanspec);
     sm=handles.SMOOTHDATA;
-    sm(1)=0.0;sm(end)=0.0;
+    sm(1)=0.0;
+    sm(end)=0.0;
 
-    [onsets,offsets]=SegmentNotes(sm,Fs,min_int,min_dur,threshold);
-    labels = char(ones([1,length(onsets)])*fix('-'));
+    [handles.ONSETS, handles.OFFSETS] = SegmentNotes( ...
+        sm, ...
+        handles.FS, ...
+        handles.MININT, ...
+        handles.MINDUR, ...
+        handles.SEGTH ...
+    );
+    
+    n_notes = length(handles.ONSETS);
+    handles.LABELS = char(ones([1, n_notes]) * fix('-'));
 
-    handles.ONSETS=onsets;
-    handles.OFFSETS=offsets;
-    handles.SEGTH=threshold;
-    handles.MININT=min_int;
-    handles.MINDUR=min_dur;
-    handles.LABELS=labels;
-    handles.SM_WIN=sm_win;
-    handles.FS = Fs;
     guidata(hObject,handles);
     handles=guidata(hObject);
 
     axes(handles.SmoothAxes);
     delete(handles.SEG_HNDL);
-    %hold off;
+    
     vv=axis;
-    %semilogy([1:length(sm)]/Fs,sm,'b-');hold on;
-    segs = zeros([length(onsets),3]);
-    for ii = 1:length(onsets)
-        segs(ii,1)=plot(onsets(ii),threshold,'k+');
-        segs(ii,2)=plot(offsets(ii),threshold,'k+');
-        segs(ii,3)=line([onsets(ii),offsets(ii)],[1,1]*threshold,'Color',[0,0,0]);
+
+    % plot segmented syllables as points with line between them
+    segs = zeros([n_notes, 3]);
+    colors = turbo(n_notes);
+
+    for ii = 1:n_notes
+        mstyle = '+';
+        lstyle = '--';
+        color = colors(ii, :);
+
+        % onset point
+        segs(ii,1) = plot(handles.ONSETS(ii), threshold, 'MarkerStyle', mstyle, 'Color', color);
+
+        % offset point
+        segs(ii,2) = plot(handles.OFFSETS(ii), threshold, 'MarkerStyle', mstyle, 'Color', color);
+
+        % line between points
+        segs(ii,3) = line([handles.ONSETS(ii), handles.OFFSETS(ii)], [1,1] * threshold, 'Color', color, 'LineStyle', lstyle);
     end
+
     lltmp = length(sm);
-    inds = [fix(0.2*lltmp):fix(0.8*lltmp)];
+    inds = fix(0.2*lltmp) : fix(0.8*lltmp);
     inds = find(sm>0);
     mntmp = 10.^floor(log10(min(sm(inds))));
     mxtmp = 10.^ceil(log10(max(sm(inds))));
     axis([vv(1:2) mntmp mxtmp]);
 
-    meantimes=(onsets+offsets).*0.5;
+    % labels centered between onset/offset.
+    % TODO: decide how to show interrupting notes
     axes(handles.LabelAxes);
     delete(handles.LABELTAGS);
-    handles.LABELTAGS=text(meantimes,zeros([length(meantimes),1]),labels.');
+    handles.LABELTAGS = text( ...
+        (handles.ONSETS + handles.OFFSETS) .* 0.5, ...
+        zeros([n_notes,1]), ...
+        handles.LABELS.' ...
+    );
     axis([vv(1:2),-2,1]);
     drawnow;
 
@@ -1175,7 +1187,8 @@ axis(handles.OrigAxis);
 vv=axis;
 lims = vv(1:2);
 p1=plot([1,1]*lims(1),vv(3:4),'k--');  
-p2=plot([1,1]*lims(2),vv(3:4),'k--');set([p1,p2],'LineW',3);
+p2=plot([1,1]*lims(2),vv(3:4),'k--');
+set([p1,p2],'LineW',3);
 
 while (1)
     [x,y,btn]=ginput(1);
@@ -1263,7 +1276,7 @@ if (strcmp(qreply,'Yes'))
     end
     
     if (strcmp(ext,'.wav'))
-        wavwrite(dat,fs,16,fname);
+        audiowrite(fname, dat, fs, BitRate=16);
     elseif (strcmp(ext,'.ebin'))
         tdat = zeros([size(dat,1)*size(dat,2),1]);
         for ijk = 1:nchan
@@ -1284,13 +1297,14 @@ if (strcmp(qreply,'Yes'))
         fclose(fid);
     end
     clear dat;
-    
-    onsets = handles.ONSETS;offsets=handles.OFFSETS;labels = handles.LABELS;
-    lpos = find((onsets>=lims(1))&(offsets<=lims(2)));
-    onsets = onsets(lpos)-lims(1);
-    offsets = offsets(lpos)-lims(1);
-    labels = labels(lpos);
-    handles.ONSETS = onsets;handles.OFFSETS = offsets;handles.LABELS=labels;
+
+    % TODO: test this without find; boolean indexing should suffice
+    lpos = find((handles.ONSETS>=lims(1)) & (offsets<=lims(2)));
+
+    handles.ONSETS  = handles.ONSETS(lpos)  - lims(1);
+    handles.OFFSETS = handles.OFFSETS(lpos) - lims(1);
+    handles.LABELS = handles.LABELS(lpos);
+
     guidata(hObject,handles);
     SaveNotMatData(hObject,handles);
     DIDNEW = 1;
