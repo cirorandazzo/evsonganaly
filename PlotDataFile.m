@@ -168,30 +168,19 @@ title(RemoveUnderScore(spectitle));
 %plot the smooth power
 
 dsamp=handles.SMUNDERSAMPLE;
-axes(handles.SmoothAxes);hold off;
-semilogy([1:length(sm(1:dsamp:end))]*dsamp/double(Fs),sm(1:dsamp:end),'b-');hold on;
-segs=zeros([length(onsets),3]);
-for ii = 1:length(onsets)
-    segs(ii,1)=plot(onsets(ii),threshold,'k+');
-    segs(ii,2)=plot(offsets(ii),threshold,'k+');
-    segs(ii,3)=line([onsets(ii),offsets(ii)],[1,1]*double(threshold),'Color',[0,0,0]);
-end
-lltmp = length(sm);
-inds = [fix(0.1*lltmp):fix(0.9*lltmp)];
-inds=find(sm>0);
-mntmp = 10^floor(log10(min(sm(inds))));
-mxtmp = 10^ceil(log10(max(sm(inds))));
-axis([vv(1:2) mntmp mxtmp]);
+axes(handles.SmoothAxes);
+hold off;
+semilogy( ...  # plot filt rec smoothed audio
+    [1:length(sm(1:dsamp:end))] * dsamp/double(Fs), ...
+    sm(1:dsamp:end), ...
+    LineStyle='-', ...
+    Color='#bdbdbd' ...  # gray
+    );
+hold on;
 
-%axes(handles.LabelAxes);hold off;
-%text(onsets.',ones(size(onsets)),labels.');
-%axis([min(t) max(t) -1 1]);
+replotSegments(hObject);
+handles = guidata(hObject);
 
-meantimes=(onsets+offsets).*0.5;
-axes(handles.LabelAxes);cla;
-handles.LABELTAGS=text(meantimes,zeros([length(meantimes),1]),labels.');
-axis([vv(1:2),-2,1]);
-set(gca,'XTick',[],'YTick',[]);
 if (get(handles.HighLightBtn,'Value')==get(handles.HighLightBtn,'Max'))
     pp=findstr(labels,get(handles.HighLightNoteBox,'string'));
     for ii=1:length(pp)
@@ -207,8 +196,6 @@ if exist('trig','var')
         hold off;drawnow;
     end
 end
-
-
 
 drawnow;
 
@@ -253,7 +240,6 @@ set(hObject,'BusyAction','Queue');
 %save sp, fs, labels
 handles.SPECGRAMVALS = sp;
 handles.SPECT_HNDL=SPECT_HNDL;
-handles.SEG_HNDL=reshape(segs,[numel(segs),1]);
 handles.TIMEVALS = t;
 handles.FREQVALS = f;
 handles.FS = Fs;

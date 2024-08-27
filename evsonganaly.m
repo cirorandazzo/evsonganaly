@@ -582,47 +582,17 @@ elseif (handles.DOEDIT)
         % 'c' was hit for crop
         
         %find all the intervals which are totally inside the bounds
-        pp = find((offsets<lnsval(1))|(onsets>lnsval(2)));
+        pp = find((handles.OFFSETS<lnsval(1))|(handles.ONSETS>lnsval(2)));
         if (length(pp)>0)
-            onsets(pp)  = [];
-            offsets(pp) = [];
-            labels(pp)  = [];
+            handles.ONSETS(pp)  = [];
+            handles.OFFSETS(pp) = [];
+            handles.LABELS(pp)  = [];
         end
     end
 
-    handles.LABELS = labels;
-    handles.ONSETS = onsets;
-    handles.OFFSETS = offsets;
     guidata(hObject,handles);
-    handles=guidata(hObject);
-    axes(handles.SmoothAxes);
-    delete(handles.EditBndLines);
-    handles.EditBndLines=[];
-    vv=axis;
-    hold on;
-    threshold=handles.SEGTH;
-    Fs = handles.FS;
-    %semilogy([1:length(handles.SMOOTHDATA)]/Fs,handles.SMOOTHDATA,'b-');hold on;
-    delete(handles.SEG_HNDL);
-    segs = zeros([length(onsets),3]);
-    for ii = 1:length(onsets)
-        segs(ii,1)=plot(onsets(ii),threshold,'k+');
-        segs(ii,2)=plot(offsets(ii),threshold,'k+');
-        segs(ii,3)=plot([onsets(ii),offsets(ii)],[1,1]*threshold,'k-');
-    end
-    axis(vv);
-    handles.SEG_HNDL=reshape(segs,[numel(segs),1]);
-    
-    meantimes=(onsets+offsets).*0.5;
-    axes(handles.LabelAxes);
-    delete(handles.LABELTAGS);
-    handles.LABELTAGS=text(meantimes,zeros([length(meantimes),1]),labels.');
-    axis([vv(1:2),-2,1]);
-    set(gca,'XTick',[],'YTick',[]);
-    guidata(hObject,handles);
-    handles=guidata(hObject);
-    drawnow;
-    
+    replotSegments(hObject);
+
     set(handles.EditBtn,'Value',get(handles.EditBtn,'Min'));
     EditBtn_Callback(hObject, eventdata, handles);
     handles=guidata(hObject);
@@ -1073,7 +1043,7 @@ function ResegmBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% show current segmenting parameters
+% show segmenting parameters dialog box
 tmpstruct.mindur = handles.MINDUR;
 tmpstruct.minint = handles.MININT;
 tmpstruct.segth  = handles.SEGTH;
@@ -1081,15 +1051,14 @@ tmpstruct.sm_win = handles.SM_WIN;
 
 tmpstruct = ChangeSettings(tmpstruct);
 if (tmpstruct.DOIT)
-    % get new values
+    % get new values from dialog box
     handles.MINDUR=tmpstruct.mindur;
     handles.MININT=tmpstruct.minint;
     handles.SEGTH =tmpstruct.segth;
     handles.SM_WIN=tmpstruct.sm_win;
     guidata(hObject,handles);
-    
-    fname=handles.INPUTFILES(handles.NFILE).fname;
 
+    % segment notes
     sm=handles.SMOOTHDATA;
     sm(1)=0.0;
     sm(end)=0.0;
@@ -1102,58 +1071,14 @@ if (tmpstruct.DOIT)
         handles.SEGTH ...
     );
     
-    n_notes = length(handles.ONSETS);
-    handles.LABELS = char(ones([1, n_notes]) * fix('-'));
+    % reset labels
+    handles.LABELS = char(ones([1, length(handles.ONSETS)]) * fix('-'));
 
     guidata(hObject,handles);
-    handles=guidata(hObject);
-
-    axes(handles.SmoothAxes);
-    delete(handles.SEG_HNDL);
     
-    vv=axis;
+    % plot new segments
+    replotSegments(hObject);
 
-    % plot segmented syllables as points with line between them
-    segs = zeros([n_notes, 3]);
-    colors = turbo(n_notes);
-
-    for ii = 1:n_notes
-        mstyle = '+';
-        lstyle = '--';
-        color = colors(ii, :);
-
-        % onset point
-        segs(ii,1) = plot(handles.ONSETS(ii), threshold, 'MarkerStyle', mstyle, 'Color', color);
-
-        % offset point
-        segs(ii,2) = plot(handles.OFFSETS(ii), threshold, 'MarkerStyle', mstyle, 'Color', color);
-
-        % line between points
-        segs(ii,3) = line([handles.ONSETS(ii), handles.OFFSETS(ii)], [1,1] * threshold, 'Color', color, 'LineStyle', lstyle);
-    end
-
-    lltmp = length(sm);
-    inds = fix(0.2*lltmp) : fix(0.8*lltmp);
-    inds = find(sm>0);
-    mntmp = 10.^floor(log10(min(sm(inds))));
-    mxtmp = 10.^ceil(log10(max(sm(inds))));
-    axis([vv(1:2) mntmp mxtmp]);
-
-    % labels centered between onset/offset.
-    % TODO: decide how to show interrupting notes
-    axes(handles.LabelAxes);
-    delete(handles.LABELTAGS);
-    handles.LABELTAGS = text( ...
-        (handles.ONSETS + handles.OFFSETS) .* 0.5, ...
-        zeros([n_notes,1]), ...
-        handles.LABELS.' ...
-    );
-    axis([vv(1:2),-2,1]);
-    drawnow;
-
-    handles.SEG_HNDL=reshape(segs,[numel(segs),1]);
-    guidata(hObject,handles);
-    
     %SaveNotMatData(hObject,handles); <-WHY WAS THIS HERE?
     
     if (get(handles.XZoomBtn,'Value')==get(handles.XZoomBtn,'Max'))
