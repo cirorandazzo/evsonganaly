@@ -24,7 +24,7 @@ function varargout = evsonganaly(varargin)
 
 % Edit the above text to modify the response to help evsonganaly
 
-% Last Modified by GUIDE v2.5 12-Oct-2023 16:34:53
+% Last Modified by GUIDE v2.5 28-Aug-2024 14:45:03
 % CDR added audio playback functionality 2023.10.12 
 
 % Begin initialization code - DO NOT EDIT
@@ -481,113 +481,116 @@ elseif (handles.DOEDIT)
     lns = handles.EditBndLines;
     lnsval = handles.EditBnds;
 
-    if (editfuncfix == 27)
-        % ESC has been hit - quit out do nothing
-        set(handles.EditBtn,'Value',get(handles.EditBtn,'Min'));
-        EditBtn_Callback(hObject, [], handles);
-        handles=guidata(hObject);
-        return;
-    elseif (editfuncfix==13)
-        % return was hit
-        
-        % is either endpoint inside an interval
-        pp = find((onsets<=lnsval(1))&(offsets>=lnsval(1)));
-        if (length(pp)==1)
-            lnsval(1) = onsets(pp);
-        end
-        pp = find((onsets<=lnsval(2))&(offsets>=lnsval(2)));
-        if (length(pp)==1)
-            lnsval(2) = offsets(pp);
-        end
-        
-        % find all the intervals between the endpoints
-        pp = find((onsets>=lnsval(1))&(offsets<=lnsval(2)));
-        if (length(pp)>0)
-            onsets(pp(1))  = lnsval(1);
-            offsets(pp(1)) = lnsval(2);
-            if (length(pp)>1)
-                onsets(pp(2:end))  = [];
-                offsets(pp(2:end)) = [];
-                labels(pp(2:end))  = [];
+    switch editfuncfix
+        case 27  % ESC - quit & do nothing.
+            set(handles.EditBtn,'Value',get(handles.EditBtn,'Min'));
+            EditBtn_Callback(hObject, [], handles);  % toggles button
+            guidata(hObject, handles);
+            return;
+
+        case 32  % space - play selection
+            nfile = handles.NFILE;
+            fName = handles.INPUTFILES(nfile).fname;
+
+            playFile(fName, lnsval(1), lnsval(2), hObject)    
+
+        case 13  % return - 
+            % is either endpoint inside an interval
+            pp = find((onsets<=lnsval(1))&(offsets>=lnsval(1)));
+            if (length(pp)==1)
+                lnsval(1) = onsets(pp);
             end
-        else
-            % this is a new non overlapping interval
-            pp = find(offsets<=lnsval(1));
-            if (length(pp)==0)
-                if (length(onsets)<1)
-                    % no intervals to begin with
-                    onsets = lnsval(1);
-                    offsets = lnsval(2);
-                    labels = '-';
-                else
-                    onsets  = [lnsval(1);onsets];
-                    offsets = [lnsval(2);offsets];
-                    labels  = ['-',labels];
+            pp = find((onsets<=lnsval(2))&(offsets>=lnsval(2)));
+            if (length(pp)==1)
+                lnsval(2) = offsets(pp);
+            end
+
+            % find all the intervals between the endpoints
+            pp = find((onsets>=lnsval(1))&(offsets<=lnsval(2)));
+            if (length(pp)>0)
+                onsets(pp(1))  = lnsval(1);
+                offsets(pp(1)) = lnsval(2);
+                if (length(pp)>1)
+                    onsets(pp(2:end))  = [];
+                    offsets(pp(2:end)) = [];
+                    labels(pp(2:end))  = [];
                 end
             else
-                pp = pp(end);
-                if (pp==length(onsets))
-                    onsets  = [onsets;lnsval(1)];
-                    offsets = [offsets;lnsval(2)];
-                    labels  = [labels,'-'];
+                % this is a new non overlapping interval
+                pp = find(offsets<=lnsval(1));
+                if (length(pp)==0)
+                    if (length(onsets)<1)
+                        % no intervals to begin with
+                        onsets = lnsval(1);
+                        offsets = lnsval(2);
+                        labels = '-';
+                    else
+                        onsets  = [lnsval(1);onsets];
+                        offsets = [lnsval(2);offsets];
+                        labels  = ['-',labels];
+                    end
                 else
-                    onsets  = [onsets(1:pp); lnsval(1);onsets(pp+1:end)];
-                    offsets = [offsets(1:pp);lnsval(2);offsets(pp+1:end)];
-                    labels  = [labels(1:pp),'-',labels(pp+1:end)];
+                    pp = pp(end);
+                    if (pp==length(onsets))
+                        onsets  = [onsets;lnsval(1)];
+                        offsets = [offsets;lnsval(2)];
+                        labels  = [labels,'-'];
+                    else
+                        onsets  = [onsets(1:pp); lnsval(1);onsets(pp+1:end)];
+                        offsets = [offsets(1:pp);lnsval(2);offsets(pp+1:end)];
+                        labels  = [labels(1:pp),'-',labels(pp+1:end)];
+                    end
                 end
             end
-        end
-    elseif ((editfuncfix==100)||(editfuncfix==68))
-        % 'd' was hit for delete
-        
-        %find all the intervals which are totally inside the bounds
-        pp = find((onsets>=lnsval(1))&(offsets<=lnsval(2)));
-        if (length(pp)>0)
-            onsets(pp)  = [];
-            offsets(pp) = [];
-            labels(pp)  = [];
-        end
-        
-        % find any intervals which contain one or both of the bounds inside
-        pp1 = find((onsets<=lnsval(1))&(offsets>=lnsval(1)));
-        pp2 = find((onsets<=lnsval(2))&(offsets>=lnsval(2)));
-        if ((length(pp1)==1)&&(length(pp2)==1))
-            if (pp1==pp2)
-               % clipping out piece from a single segment to make 2 new
-               % segments
-               if (pp1<length(onsets))
-                   onsets = [onsets(1:pp1);lnsval(2);onsets(pp1+1:end)];
-                   labels = [labels(1:pp1),labels(pp1),labels(pp1+1:end)];
-               else
-                   onsets = [onsets(1:pp1);lnsval(2)];
-                   labels = [labels(1:pp1),labels(pp1)];
-               end
-               
-               if (pp1>1)
-                   offsets = [offsets(1:pp1-1);lnsval(1);offsets(pp1:end)];
-               else
-                   offsets = [lnsval(2);offsets(1:end)];
-               end
-            else
-                % both intervals overlap but not on the same segment
+
+        case {68, 100}  % one of {d, numpad4} – delete
+            %find all the intervals which are totally inside the bounds
+            pp = find((onsets>=lnsval(1))&(offsets<=lnsval(2)));
+            if (length(pp)>0)
+                onsets(pp)  = [];
+                offsets(pp) = [];
+                labels(pp)  = [];
+            end
+            
+            % find any intervals which contain one or both of the bounds inside
+            pp1 = find((onsets<=lnsval(1))&(offsets>=lnsval(1)));
+            pp2 = find((onsets<=lnsval(2))&(offsets>=lnsval(2)));
+            if ((length(pp1)==1)&&(length(pp2)==1))
+                if (pp1==pp2)
+                   % clipping out piece from a single segment to make 2 new
+                   % segments
+                   if (pp1<length(onsets))
+                       onsets = [onsets(1:pp1);lnsval(2);onsets(pp1+1:end)];
+                       labels = [labels(1:pp1),labels(pp1),labels(pp1+1:end)];
+                   else
+                       onsets = [onsets(1:pp1);lnsval(2)];
+                       labels = [labels(1:pp1),labels(pp1)];
+                   end
+                   
+                   if (pp1>1)
+                       offsets = [offsets(1:pp1-1);lnsval(1);offsets(pp1:end)];
+                   else
+                       offsets = [lnsval(2);offsets(1:end)];
+                   end
+                else
+                    % both intervals overlap but not on the same segment
+                    offsets(pp1) = lnsval(1);
+                    onsets(pp2) = lnsval(2);
+                end
+            elseif (length(pp1)==1)
                 offsets(pp1) = lnsval(1);
-                onsets(pp2) = lnsval(2);
+            elseif (length(pp2)==1)
+                onsets(pp1) = lnsval(2);
             end
-        elseif (length(pp1)==1)
-            offsets(pp1) = lnsval(1);
-        elseif (length(pp2)==1)
-            onsets(pp1) = lnsval(2);
-        end
-    elseif ((editfuncfix==99)||(editfuncfix==67))
-        % 'c' was hit for crop
-        
-        %find all the intervals which are totally inside the bounds
-        pp = find((handles.OFFSETS<lnsval(1))|(handles.ONSETS>lnsval(2)));
-        if (length(pp)>0)
-            handles.ONSETS(pp)  = [];
-            handles.OFFSETS(pp) = [];
-            handles.LABELS(pp)  = [];
-        end
+            
+        case {67, 99}  % one of {c, numpad3} – crop
+            % find all the intervals which are totally inside the bounds
+            pp = find((handles.OFFSETS<lnsval(1))|(handles.ONSETS>lnsval(2)));
+            if (length(pp)>0)
+                handles.ONSETS(pp)  = [];
+                handles.OFFSETS(pp) = [];
+                handles.LABELS(pp)  = [];
+            end
     end
 
     guidata(hObject,handles);
@@ -754,44 +757,43 @@ elseif (handles.DOEDIT)
     
     lns = handles.EditBndLines;
     lnsval = handles.EditBnds;
-    if (btnval==1)
-        % left button
-        delete(lns(1));
-        tmp = plot([1,1]*XVal,vv(3:4),'r--');
-        lns(1) = tmp;
-        lnsval(1) = XVal;
-    elseif (btnval==3)
-        % right button
-        delete(lns(2));
-        tmp = plot([1,1]*XVal,vv(3:4),'r--');
-        lns(2) = tmp;
-        lnsval(2) = XVal;
-    elseif (btnval==2)
-        % middle btn
-        % sets boundaries to the note cliked on
-        pp=find(onsets<XVal);
-        if (length(pp)>1)
-            pp = pp(end);
-            if ((XVal>=onsets(pp))&&(XVal<=offsets(pp)))
-                % if you clicked right in the middle of one note
-                %it chooses that note as the bounds
-                delete(lns);
-                tmp1 = plot([1,1]*onsets(pp),vv(3:4),'r--');
-                tmp2 = plot([1,1]*offsets(pp),vv(3:4),'r--');
-                lns = [tmp1,tmp2];
-                lnsval = [onsets(pp),offsets(pp)];
-            elseif (pp<length(onsets))
-                if ((XVal>=onsets(pp))&&(XVal<=offsets(pp+1)))
+
+    switch btnval
+        case {1,3}  % left/right button - set lines
+            if btnval==1
+                i=1;
+            elseif btnval==3
+                i=2;
+            end
+
+            delete(lns(i));
+            tmp = plot([1,1]*XVal,vv(3:4),'r--');
+            lns(i) = tmp;
+            lnsval(i) = XVal;
+        case 2  % middle button - sets boundaries to the note clicked on
+            pp=find(onsets<XVal);
+            if (length(pp)>1)
+                pp = pp(end);
+                if ((XVal>=onsets(pp))&&(XVal<=offsets(pp)))
+                    % if you clicked right in the middle of one note
+                    %it chooses that note as the bounds
                     delete(lns);
                     tmp1 = plot([1,1]*onsets(pp),vv(3:4),'r--');
-                    tmp2 = plot([1,1]*offsets(pp+1),vv(3:4),'r--');
+                    tmp2 = plot([1,1]*offsets(pp),vv(3:4),'r--');
                     lns = [tmp1,tmp2];
-                    lnsval = [onsets(pp),offsets(pp+1)];
+                    lnsval = [onsets(pp),offsets(pp)];
+                elseif (pp<length(onsets))
+                    if ((XVal>=onsets(pp))&&(XVal<=offsets(pp+1)))
+                        delete(lns);
+                        tmp1 = plot([1,1]*onsets(pp),vv(3:4),'r--');
+                        tmp2 = plot([1,1]*offsets(pp+1),vv(3:4),'r--');
+                        lns = [tmp1,tmp2];
+                        lnsval = [onsets(pp),offsets(pp+1)];
+                    end
                 end
             end
-        end
-    end  
-    
+    end
+
     handles.EditBndLines = lns;
     handles.EditBnds = lnsval;
     guidata(hObject,handles);
@@ -1575,127 +1577,34 @@ function PlayAudioFullBtn_Callback(hObject, eventdata, handles)
     nfile = handles.NFILE;
     fName = handles.INPUTFILES(nfile).fname;
 
-    playCbinFile(fName, 0, inf, handles); % play whole clip
+    playFile(fName, 0, inf, hObject); % play whole clip
     
 
 
 return
 
-% --- Executes on button press in PlayAudioSegBtn.
-function PlayAudioSegBtn_Callback(hObject, eventdata, handles)
-    % hObject    handle to PlayAudioSegBtn (see GCBO)
-    % eventdata  reserved - to be defined in a future version of MATLAB
-    % handles    structure with handles and user data (see GUIDATA)
-
-    % line selecting code copied from CropBtn_Callback
-    % CDR 2023.10.13
-
-    % TODO: add something like 'labeling mode' so you cant start a bunch of
-    % these at once (oops)
-
-    % if labeling was on
-
-    if (get(handles.LabelBtn,'Value')==get(handles.LabelBtn,'Max'))
-        SetLabelingOff(hObject, handles);
-    end
-    
-    % if zoom was on
-    zoom off;
-    if (get(handles.XZoomBtn,'Value')==get(handles.XZoomBtn,'Max'))
-        set(handles.XZoomBtn,'Value',get(handles.XZoomBtn,'Min'));
-    end
-    
-    
-    axis(handles.OrigAxis);
-    vv=axis;
-
-    [lims, p1, p2] = windowSelect(vv, handles.SpecGramAxes);
-
-
-    % lims is of form [L_boundary, R_boundary], each in seconds of
-    % recording
-
-    nfile = handles.NFILE;
-    fName = handles.INPUTFILES(nfile).fname;
-
-    playCbinFile(fName, lims(1), lims(2), handles);
-
-    while (get(hObject,'Value')==1) % can also end by clicking toggle button again
-        % [~,~,button] = ginput(1);
-        k = waitforbuttonpress;
-        button = double(get(gcf,'CurrentCharacter'))
-
-        if button==32 %spacebar
-            playCbinFile(fName, lims(1), lims(2), handles);
-        elseif button==27 %escape
-            break;
-        end
-    end
-
-    set(hObject, 'Value',0); % reset button
-    delete(p1);
-    delete(p2);
-    return
-
-function [lims, p1, p2] = windowSelect(vv, currentAxes)
-    % prompt for 2 vertical lines, left with L mouse button and right
-    % with R mouse button.
-    % vv: 4-element array with axis [left boundary, right boundary, 
-    % bottom boundary, top boundary
-    % 
-    % CDR 2023.10.13
-
-    axes(currentAxes);hold on;
-
-    linestyle = 'k--';
-    linew = 3;
-
-    % start with lines at the limits
-    p1=plot([1,1]*vv(1),vv(3:4), linestyle);  
-    p2=plot([1,1]*vv(2),vv(3:4), linestyle);
-    set([p1,p2],'LineW',linew);
-
-    lims = vv(1:2); % to store new limits
-
-    % draw boundaries, one with L mouse button one with R mouse button
-    while (1)  % only break out of loop once esc or space are hit
-        [x,y,btn]=ginput(1);
-        
-        if (isempty(btn))
-            break;
-        end
-        
-        % hit escape or space to end
-        if (btn==27 || btn==32)
-            break;
-        end
-        
-        if (btn==1)
-            if ((x<vv(2))&(x>0))
-                lims(1) = x;
-                delete(p1);
-                p1=plot([1,1]*lims(1),vv(3:4),linestyle);
-                set(p1,'LineW',linew);
-            end
-        end
-        
-        if (btn==3)
-            if ((x>vv(1))&(x<vv(2)))
-                lims(2) = x;
-                delete(p2);
-                p2=plot([1,1]*lims(2),vv(3:4),linestyle);
-                set(p2,'LineW',linew);
-            end
-        end
-    end
-
-    return
-
-
-function playCbinFile(fName, t0, tf, handles)
+function playFile(fName, t0, tf, hObject)
     % play a cbin file to default audio output, from t0 to tf (in seconds).
+    
+    handles = guidata(hObject);
+
+    % deal with preexisting player
+
+
+    if isfield(handles, 'player_line')
+        delete(handles.player_line)
+    end
+
+    if isfield(handles, 'player') && isplaying(handles.player)
+        stop(handles.player);
+        return;
+    end
+
+    guidata(hObject, handles);
+
+    % play new audio   
     disp(append("Playing audio for file: ", fName));
-    [y, fs] = ReadDataFile(fName, 0, 0);
+    [y, fs] = ReadDataFile(fName, '0', 0);
     y = rescale(y,-1,1);  % rescale, otherwise there's clipping
 
     l = length(y); %length in samples
@@ -1716,35 +1625,36 @@ function playCbinFile(fName, t0, tf, handles)
 
     y=y(s0:sf);
 
-    player = audioplayer(y,fs);
+    handles.player = audioplayer(y,fs);
+    guidata(hObject, handles);
     % playblocking(player);
-    play(player);
+    play(handles.player);
 
     % prep play tracking line
-    axes(handles.SpecGramAxes);hold on;
-    axis(handles.OrigAxis);
-    vv=axis; % limits of current axis
+    axes(handles.SpecGramAxes);
+    hold on;
 
     
-    while (isplaying(player))
+    while (isplaying(handles.player))
         % get sample/timestamp
-        si = get(player, 'CurrentSample');
+        si = get(handles.player, 'CurrentSample');
         ti = (si-1)/fs + t0; % convert to time. add t0 to account for offset
 
-        % delete old line & plot new
-        
-        
-        line=plot([1,1]*ti,vv(3:4),'w',...
+        % plot line, wait a bit, then delete it
+        handles.player_line = plot( ...
+            [1,1] * ti, ...
+            handles.OrigAxis(3:4), ...
+            'w',...
             'LineW',3);
+        guidata(hObject, handles);
 
         pause(0.01)
-        delete(line)
-
-        % check for esc
-        
+        delete(handles.player_line)
     end
 
     hold off;
+
+    guidata(hObject, handles);
 
     return
 

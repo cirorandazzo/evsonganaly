@@ -128,14 +128,26 @@ handles.MINDUR=min_dur;
 handles.LABELS=labels;
 handles.SM_WIN=sm_win;
 handles.FS = Fs;
+
 guidata(hObject,handles);
-handles=guidata(hObject);
 
 if (length(onsets)==0)
     onsets=[t(1)];offsets=[t(end)];labels=['-'];
 end
 
-% image the spectrogram
+%% plot the smooth power
+dsamp=handles.SMUNDERSAMPLE;
+axes(handles.SmoothAxes);
+hold off;
+semilogy( ...  # plot filt rec smoothed audio
+    [1:length(sm(1:dsamp:end))] * dsamp/double(Fs), ...
+    sm(1:dsamp:end), ...
+    LineStyle='-', ...
+    Color='#bdbdbd' ...  # gray
+    );
+hold on;
+
+%% plot spectrogram
 axes(handles.SpecGramAxes);hold off;
 
 %%%%%%%%%% change for caxis version %%%%%%%%%%
@@ -165,19 +177,8 @@ clear sptemp;
 spectitle=FNAME;
 title(RemoveUnderScore(spectitle));
 
-%plot the smooth power
-
-dsamp=handles.SMUNDERSAMPLE;
-axes(handles.SmoothAxes);
-hold off;
-semilogy( ...  # plot filt rec smoothed audio
-    [1:length(sm(1:dsamp:end))] * dsamp/double(Fs), ...
-    sm(1:dsamp:end), ...
-    LineStyle='-', ...
-    Color='#bdbdbd' ...  # gray
-    );
-hold on;
-
+%%
+guidata(hObject, handles);
 replotSegments(hObject);
 handles = guidata(hObject);
 
