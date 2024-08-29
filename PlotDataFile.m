@@ -178,9 +178,8 @@ spectitle=FNAME;
 title(RemoveUnderScore(spectitle));
 
 %%
-guidata(hObject, handles);
-replotSegments(hObject);
-handles = guidata(hObject);
+handles = replotSegments(handles);
+guidata(hObject,handles);
 
 if (get(handles.HighLightBtn,'Value')==get(handles.HighLightBtn,'Max'))
     pp=findstr(labels,get(handles.HighLightNoteBox,'string'));

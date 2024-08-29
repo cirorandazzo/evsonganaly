@@ -1,12 +1,9 @@
-function replotSegments(hObject)
+function handles = replotSegments(handles)
 % plot segmented syllables as points with line between them
 % separated out by CDR 2024.08 - was previously in like 4 separate places
 % in the code??
 
-handles = guidata(hObject);
-
 n_notes = length(handles.ONSETS);
-
 assert( n_notes == length(handles.OFFSETS) & n_notes == length(handles.LABELS))
 
 segs = zeros([n_notes, 3]);
@@ -15,19 +12,16 @@ colors = lines(n_notes);
 axes(handles.SmoothAxes);  % select wave axes
 hold on;
 
-to_clear = ["SEG_HNDL"  % current segments
-    "EditBndLines"];  % remove lines from 'edit'. may not exist
+try
+    delete(handles.SEG_HNDL);
+catch
+end
 
-for i=to_clear
-    % may not exist, so need this in try block
-    try
-        delete(handles.(i));
-    catch
-    end
+try  % delete edit lines on SmoothAxes if they exist
+    delete(handles.EditBndLines);
+catch
 end
 handles.EditBndLines=[];
-
-guidata(hObject, handles);
 
 for ii = 1:n_notes
     mstyle = '|';
@@ -77,5 +71,4 @@ vv=axis;
 axis([vv(1:2),-2,1]);
 
 hold off;
-guidata(hObject, handles);
 return

@@ -291,6 +291,9 @@ function LabelBtn_Callback(hObject, eventdata, handles)
 %set(handles.EVSONGANAL,'Selected','On');
 %set(handles.SpecGramAxes,'Selected','On');
 
+handles = sortSegments(handles);
+guidata(hObject, handles);
+
 if (get(handles.LabelBtn,'Value')==get(handles.LabelBtn,'Max'))
     % turn zoom off
     zoom off;
@@ -354,112 +357,121 @@ if (handles.DOLABEL)
     newlabel = get(hObject,'CurrentCharacter');
     newlabelfix = fix(newlabel);
     
-    if (newlabelfix == 27)
-        % ESC has been hit - quit out
-        SetLabelingOff(hObject, handles);
-        return;
-    elseif ((newlabelfix == 8)||(newlabelfix == 28))
-        %backspace/back arrow
-        if (curlabelind>0)
-            set(txtlbl(curlabelind),'Color',[0,0,0]);
-            curlabelind=curlabelind-1;
-            if (curlabelind<1)
-                curlabelind=1;
-            end
-            set(txtlbl(curlabelind),'Color',[1,0,0]);
-            handles.CurLabelInd=curlabelind;
-            guidata(hObject,handles);
+    c_uns = [0 0 0];
+    c_sel = [1 0 0];
 
-            if (curlabelind>1)
-                lblpos = get(txtlbl(curlabelind),'Position');
-                if (lblpos(1)<=vv(1))
-                    axes(handles.SpecGramAxes);
+    switch newlabelfix
+        case 27  % esc - quit label mode
+            SetLabelingOff(hObject, handles);
+            return;
+        
+        case {8, 28}  % backspace/back arrow - select previous label
+
+            if (curlabelind>0)
+                set(txtlbl(curlabelind),'Color', c_uns);
+                curlabelind=curlabelind-1;
+                if (curlabelind<1)
+                    curlabelind=1;
+                end
+                set(txtlbl(curlabelind),'Color', c_sel);
+                handles.CurLabelInd=curlabelind;
+                guidata(hObject,handles);
+    
+                if (curlabelind>1)
+                    lblpos = get(txtlbl(curlabelind),'Position');
+                    if (lblpos(1)<=vv(1))
+                        axes(handles.SpecGramAxes);
+                        axis([[vv(1:2) - 0.8*dXAxis],vv(3:4)]);
+                    end
+                end
+            else
+                if ((vv(2)-0.8*dXAxis)>0)
                     axis([[vv(1:2) - 0.8*dXAxis],vv(3:4)]);
                 end
             end
-        else
-            if ((vv(2)-0.8*dXAxis)>0)
-                axis([[vv(1:2) - 0.8*dXAxis],vv(3:4)]);
+
+        case 29  % forward arrow
+            if (curlabelind>0)
+                set(txtlbl(curlabelind),'Color',c_uns);
+                curlabelind=curlabelind+1;
+                if (curlabelind>length(txtlbl))
+                    curlabelind=length(txtlbl);
+                end
+                set(txtlbl(curlabelind),'Color',c_sel);
+                handles.CurLabelInd=curlabelind;
+                guidata(hObject,handles);
+    
+                if (curlabelind<=length(txtlbl))
+                    lblpos = get(txtlbl(curlabelind),'Position');
+                end
+                if (lblpos(1)>vv(2))
+                    axes(handles.SpecGramAxes);
+                    axis([[vv(1:2) + 0.8*dXAxis],vv(3:4)]);
+                end
+            else
+                if ((vv(1)+0.8*dXAxis)<handles.OrigAxis(2))
+                    axis([[vv(1:2) + 0.8*dXAxis],vv(3:4)]);
+                end
             end
-        end
-    elseif (newlabelfix == 29) %forward arrow
-        if (curlabelind>0)
-            set(txtlbl(curlabelind),'Color',[0,0,0]);
-            curlabelind=curlabelind+1;
-            if (curlabelind>length(txtlbl))
-                curlabelind=length(txtlbl);
+
+        case 30  % up arrow
+            if (curlabelind>0)
+		        set(txtlbl(curlabelind),'Color',c_uns);
             end
-            set(txtlbl(curlabelind),'Color',[1,0,0]);
+            pp=find(handles.ONSETS>vv(2));
+            if (~isempty(pp))
+                curlabelind=pp(1);
+                set(txtlbl(curlabelind),'Color',c_sel);
+                axis([vv(2),(vv(2)+dXAxis),vv(3:4)]);
+            else
+                curlabelind=0;
+                axis([vv(2),(vv(2)+dXAxis),vv(3:4)]);
+            end
             handles.CurLabelInd=curlabelind;
             guidata(hObject,handles);
 
-            if (curlabelind<=length(txtlbl))
-                lblpos = get(txtlbl(curlabelind),'Position');
+        case 31  % down arrow
+            if (curlabelind>0)
+		        set(txtlbl(curlabelind),'Color',c_uns);
             end
-            if (lblpos(1)>vv(2))
-                axes(handles.SpecGramAxes);
-                axis([[vv(1:2) + 0.8*dXAxis],vv(3:4)]);
+            pp=find(handles.OFFSETS<vv(1));
+            if (length(pp)>0)
+                curlabelind=pp(end);
+                set(txtlbl(curlabelind),'Color',c_sel);
+                axis([vv(1)-dXAxis,vv(1),vv(3:4)]);
+            else
+                curlabelind=0;
+                axis([vv(1)-dXAxis,vv(1),vv(3:4)]);
             end
-        else
-            if ((vv(1)+0.8*dXAxis)<handles.OrigAxis(2))
-                axis([[vv(1:2) + 0.8*dXAxis],vv(3:4)]);
-            end
-        end
-    elseif (newlabelfix == 30) % up arrow
-        if (curlabelind>0)
-		    set(txtlbl(curlabelind),'Color',[0,0,0]);
-        end
-        pp=find(handles.ONSETS>vv(2));
-        if (~isempty(pp))
-            curlabelind=pp(1);
-            set(txtlbl(curlabelind),'Color',[1,0,0]);
-            axis([vv(2),(vv(2)+dXAxis),vv(3:4)]);
-        else
-            curlabelind=0;
-            axis([vv(2),(vv(2)+dXAxis),vv(3:4)]);
-        end
-        handles.CurLabelInd=curlabelind;
-        guidata(hObject,handles);
-    elseif (newlabelfix == 31) %down arrow
-        if (curlabelind>0)
-		    set(txtlbl(curlabelind),'Color',[0,0,0]);
-        end
-        pp=find(handles.OFFSETS<vv(1));
-        if (length(pp)>0)
-            curlabelind=pp(end);
-            set(txtlbl(curlabelind),'Color',[1,0,0]);
-            axis([vv(1)-dXAxis,vv(1),vv(3:4)]);
-        else
-            curlabelind=0;
-            axis([vv(1)-dXAxis,vv(1),vv(3:4)]);
-        end
-        handles.CurLabelInd=curlabelind;
-        guidata(hObject,handles);
-    else
-        if (curlabelind>0)
-            if (length(newlabel)>0)
-                set(txtlbl(curlabelind),'String',newlabel);
-                %waitfor(txtlbl(curlabelind),'String',newlabel);
-                handles.LABELS(curlabelind) = newlabel;
-                set(txtlbl(curlabelind),'Color',[0,0,0]);
-                curlabelind = curlabelind + 1;
-                if (curlabelind>length(txtlbl))
-                    curlabelind = length(txtlbl);
-                end
-                set(txtlbl(curlabelind),'Color',[1,0,0]);
-                handles.CurLabelInd=curlabelind;
-                guidata(hObject,handles);
+            handles.CurLabelInd=curlabelind;
+            guidata(hObject,handles);
 
-                if (curlabelind<=length(txtlbl))
-                    lblpos = get(txtlbl(curlabelind),'Position');
-                    if (lblpos(1)>=vv(2))
-                        axes(handles.SpecGramAxes);
-                        axis([[vv(1:2) + 0.8*dXAxis],vv(3:4)]);
+        otherwise
+            if (curlabelind>0)
+                if (length(newlabel)>0)
+                    set(txtlbl(curlabelind),'String',newlabel);
+                    %waitfor(txtlbl(curlabelind),'String',newlabel);
+                    handles.LABELS(curlabelind) = newlabel;
+                    set(txtlbl(curlabelind),'Color',c_uns);
+                    curlabelind = curlabelind + 1;
+                    if (curlabelind>length(txtlbl))
+                        curlabelind = length(txtlbl);
+                    end
+                    set(txtlbl(curlabelind),'Color',c_sel);
+                    handles.CurLabelInd=curlabelind;
+                    guidata(hObject,handles);
+    
+                    if (curlabelind<=length(txtlbl))
+                        lblpos = get(txtlbl(curlabelind),'Position');
+                        if (lblpos(1)>=vv(2))
+                            axes(handles.SpecGramAxes);
+                            axis([[vv(1:2) + 0.8*dXAxis],vv(3:4)]);
+                        end
                     end
                 end
             end
-        end
     end
+
     if (curlabelind>0)
         lblpos = get(txtlbl(curlabelind),'Position');
         vv=axis;
@@ -494,109 +506,32 @@ elseif (handles.DOEDIT)
 
             playFile(fName, lnsval(1), lnsval(2), hObject)    
 
-        case 13  % return - 
-            % is either endpoint inside an interval
-            pp = find((onsets<=lnsval(1))&(offsets>=lnsval(1)));
-            if (length(pp)==1)
-                lnsval(1) = onsets(pp);
-            end
-            pp = find((onsets<=lnsval(2))&(offsets>=lnsval(2)));
-            if (length(pp)==1)
-                lnsval(2) = offsets(pp);
-            end
-
-            % find all the intervals between the endpoints
-            pp = find((onsets>=lnsval(1))&(offsets<=lnsval(2)));
-            if (length(pp)>0)
-                onsets(pp(1))  = lnsval(1);
-                offsets(pp(1)) = lnsval(2);
-                if (length(pp)>1)
-                    onsets(pp(2:end))  = [];
-                    offsets(pp(2:end)) = [];
-                    labels(pp(2:end))  = [];
-                end
-            else
-                % this is a new non overlapping interval
-                pp = find(offsets<=lnsval(1));
-                if (length(pp)==0)
-                    if (length(onsets)<1)
-                        % no intervals to begin with
-                        onsets = lnsval(1);
-                        offsets = lnsval(2);
-                        labels = '-';
-                    else
-                        onsets  = [lnsval(1);onsets];
-                        offsets = [lnsval(2);offsets];
-                        labels  = ['-',labels];
-                    end
-                else
-                    pp = pp(end);
-                    if (pp==length(onsets))
-                        onsets  = [onsets;lnsval(1)];
-                        offsets = [offsets;lnsval(2)];
-                        labels  = [labels,'-'];
-                    else
-                        onsets  = [onsets(1:pp); lnsval(1);onsets(pp+1:end)];
-                        offsets = [offsets(1:pp);lnsval(2);offsets(pp+1:end)];
-                        labels  = [labels(1:pp),'-',labels(pp+1:end)];
-                    end
-                end
-            end
+        case 13  % return/enter - write new syllable without touching previous
+            [onsets, offsets, labels] = new_interval(onsets, offsets, labels, lnsval);
 
         case {68, 100}  % one of {d, numpad4} – delete
-            %find all the intervals which are totally inside the bounds
-            pp = find((onsets>=lnsval(1))&(offsets<=lnsval(2)));
-            if (length(pp)>0)
+            [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval);
+            
+        case {67, 99}  % one of {c, numpad3} – crop
+            % find all the intervals which are totally inside the bounds
+            pp = find((offsets<lnsval(1))|(onsets>lnsval(2)));
+            if ~isempty(pp)
                 onsets(pp)  = [];
                 offsets(pp) = [];
                 labels(pp)  = [];
             end
-            
-            % find any intervals which contain one or both of the bounds inside
-            pp1 = find((onsets<=lnsval(1))&(offsets>=lnsval(1)));
-            pp2 = find((onsets<=lnsval(2))&(offsets>=lnsval(2)));
-            if ((length(pp1)==1)&&(length(pp2)==1))
-                if (pp1==pp2)
-                   % clipping out piece from a single segment to make 2 new
-                   % segments
-                   if (pp1<length(onsets))
-                       onsets = [onsets(1:pp1);lnsval(2);onsets(pp1+1:end)];
-                       labels = [labels(1:pp1),labels(pp1),labels(pp1+1:end)];
-                   else
-                       onsets = [onsets(1:pp1);lnsval(2)];
-                       labels = [labels(1:pp1),labels(pp1)];
-                   end
-                   
-                   if (pp1>1)
-                       offsets = [offsets(1:pp1-1);lnsval(1);offsets(pp1:end)];
-                   else
-                       offsets = [lnsval(2);offsets(1:end)];
-                   end
-                else
-                    % both intervals overlap but not on the same segment
-                    offsets(pp1) = lnsval(1);
-                    onsets(pp2) = lnsval(2);
-                end
-            elseif (length(pp1)==1)
-                offsets(pp1) = lnsval(1);
-            elseif (length(pp2)==1)
-                onsets(pp1) = lnsval(2);
-            end
-            
-        case {67, 99}  % one of {c, numpad3} – crop
-            % find all the intervals which are totally inside the bounds
-            pp = find((handles.OFFSETS<lnsval(1))|(handles.ONSETS>lnsval(2)));
-            if (length(pp)>0)
-                handles.ONSETS(pp)  = [];
-                handles.OFFSETS(pp) = [];
-                handles.LABELS(pp)  = [];
-            end
     end
 
+    handles.ONSETS = onsets;
+    handles.OFFSETS = offsets;
+    handles.LABELS = labels;
+    
+    handles = replotSegments(handles);
     guidata(hObject,handles);
-    replotSegments(hObject);
 
-    set(handles.EditBtn,'Value',get(handles.EditBtn,'Min'));
+    % uncomment to automatically leave edit mode following keypress
+    % 
+    % set(handles.EditBtn,'Value',get(handles.EditBtn,'Min'));
     EditBtn_Callback(hObject, eventdata, handles);
     handles=guidata(hObject);
 else
@@ -612,11 +547,14 @@ return;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function SetLabelingOff(hObject, handles);
+
+c_uns = [0 0 0];
+
 % stops labeling, sets all characters to black
 set(handles.LabelBtn,'Value',get(handles.LabelBtn,'Min'));
 handles.DOLABEL=0;
 if (handles.CurLabelInd>0)
-    set(handles.LABELTAGS(handles.CurLabelInd),'Color',[0,0,0]);
+    set(handles.LABELTAGS(handles.CurLabelInd),'Color',c_uns);
 end
 handles.CurLabelInd = 0;
 guidata(hObject,handles);
@@ -631,6 +569,10 @@ function EVSONGANAL_WindowButtonDownFcn(hObject, eventdata, handles)
 % hObject    handle to EVSONGANAL (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% todo: make these global
+c_uns = [0 0 0];
+c_sel = [1 0 0];
 
 SType=get(hObject,'SelectionType');
 axisvals = get(handles.SpecGramAxes,'Position');
@@ -683,14 +625,14 @@ if ((handles.DOLABEL==1)||(handles.DOLABEL==2))
     % pick the new current label
     labelpos = find(offsets>=XVal);
     if (curlabelind>0)
-        set(txtlbl(curlabelind),'Color',[0,0,0]);
+        set(txtlbl(curlabelind),'Color',c_uns);
     end
     curlabelind=0;
     if (~isempty(labelpos))
         if ((onsets(labelpos(1))>=vv(1))&&(onsets(labelpos(1))<=vv(2)))
             curlabelind = labelpos(1);
             if ((curlabelind>0)&&(curlabelind<=length(txtlbl)))
-                set(txtlbl(curlabelind),'Color',[1,0,0]);
+                set(txtlbl(curlabelind),'Color',c_sel);
             else
                 curlabelind=0;
             end
@@ -721,9 +663,9 @@ if ((handles.DOLABEL==1)||(handles.DOLABEL==2))
                     end
                 end
 
-                set(txtlbl(curlabelind),'Color',[0,0,0]);
+                set(txtlbl(curlabelind),'Color',c_uns);
                 curlabelind = min([curlabelind + length(newlabel),length(txtlbl)]);
-                set(txtlbl(curlabelind),'Color',[1,0,0]);
+                set(txtlbl(curlabelind),'Color',c_sel);
                 handles.CurLabelInd=curlabelind;
                 guidata(hObject,handles);
 
@@ -843,6 +785,9 @@ function MoveAxisRight_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+c_uns = [0 0 0];
+c_sel = [1 0 0];
+
 axes(handles.SpecGramAxes);
 vv=axis;
 dXAxis = vv(2)-vv(1);
@@ -853,8 +798,12 @@ if (handles.DOLABEL)
 end
 return;
 
+
 function ResetLabelInd(hObject,handles,vv);
 % sets the current label to the first one in the axes
+
+c_uns = [0 0 0];
+c_sel = [1 0 0];
 
 curlabelind = handles.CurLabelInd;
 
@@ -863,13 +812,15 @@ onsets  = handles.ONSETS;
 offsets = handles.OFFSETS;
 
 if (curlabelind>0)
-    set(txtlbl(curlabelind),'Color',[0,0,0]);
+    set(txtlbl(curlabelind),'Color',c_uns);
 end
+
+
 
 labelpos = find((onsets>vv(1))&(onsets<vv(2)));
 if (length(labelpos)>0)
     curlabelind = labelpos(1);
-    set(txtlbl(curlabelind),'Color',[1,0,0]);
+    set(txtlbl(curlabelind),'Color',c_sel);
 else
     curlabelind = 0;
 end
@@ -1076,10 +1027,9 @@ if (tmpstruct.DOIT)
     % reset labels
     handles.LABELS = char(ones([1, length(handles.ONSETS)]) * fix('-'));
 
-    guidata(hObject,handles);
-    
     % plot new segments
-    replotSegments(hObject);
+    handles = replotSegments(handles);
+    guidata(hObject,handles);
 
     %SaveNotMatData(hObject,handles); <-WHY WAS THIS HERE?
     
@@ -1256,14 +1206,14 @@ return;
 
 % --- Executes on button press in EditBtn.
 function EditBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to EditBtn (see GCBO)
+% hObject    windows graphic object -- old note: handle to EditBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of EditBtn
+edit_linestyle = 'r--';
 
-
-if (get(handles.EditBtn,'Value')==get(handles.EditBtn,'Max'))
+if (get(handles.EditBtn,'Value')==get(handles.EditBtn,'Max'))  % edit button is on
     %turn labeling off if it is on
     if (handles.DOLABEL~=0)
         SetLabelingOff(hObject, handles);
@@ -1277,14 +1227,23 @@ if (get(handles.EditBtn,'Value')==get(handles.EditBtn,'Max'))
     handles.DOEDIT=1;
     
     axes(handles.SmoothAxes);
+
+    try
+        delete(handles.EditBndLines)
+        delete(handles.EditBnds)
+    catch
+    end
+
     vv=axis;
     hold on;
-    p1=plot([1,1]*vv(1),vv(3:4),'r--');
-    p2=plot([1,1]*vv(2),vv(3:4),'r--');
+
+    p1=plot([1,1]*vv(1),vv(3:4), edit_linestyle);
+    p2=plot([1,1]*vv(2),vv(3:4), edit_linestyle);
     handles.EditBndLines = [p1,p2];
     handles.EditBnds = vv(1:2);
     set(gcf,'pointer','crosshair');
-else
+
+else  % edit button off
     axes(handles.SmoothAxes);
     if (length(handles.EditBndLines)>1)
         delete(handles.EditBndLines);
@@ -1747,3 +1706,67 @@ function wrtrecf(fname,recdata,ADDX)
     end
     fclose(fid);
     return;    
+
+
+function handles = sortSegments(handles)
+    % given handles struct, sort segment stuff
+    % 
+    % note: need to run guidata(hObject, handles) after calling function
+
+    % sort by increasing offset
+    [handles.ONSETS, ii] = sort(handles.ONSETS);
+    handles.OFFSETS = handles.OFFSETS(ii);
+    handles.LABELS = handles.LABELS(ii);
+    handles.LABELTAGS = handles.LABELTAGS(ii);
+
+return
+
+function [onsets, offsets, labels] = new_interval(onsets, offsets, labels, lnsval)
+    if (length(onsets)<1)
+        % no intervals to begin with
+        onsets = lnsval(1);
+        offsets = lnsval(2);
+        labels = '-';
+    else
+        onsets  = [lnsval(1); onsets];
+        offsets = [lnsval(2); offsets];
+        labels  = ['-', labels];
+    end
+
+    assert(length(onsets) == length(offsets) && length(onsets) == length(labels));
+
+    return
+
+function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval)
+    
+    assert(lnsval(1) <= lnsval(2))
+
+    % find & delete all the intervals which are totally inside the bounds
+    pp = (onsets>=lnsval(1)) & (offsets<=lnsval(2));
+    onsets(pp)  = [];
+    offsets(pp) = [];
+    labels(pp)  = [];
+
+    pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+    pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+
+    % both lines occur during note - clip out center & create 2 notes.
+    for i = reshape(find(pp1 & pp2), 1, [])  % enforce row vector
+        % matlab runs an iteration of for loop with empty col vector >:(
+
+        onsets = [onsets(1:i-1);  onsets(i); lnsval(2);  onsets(i+1:end)];
+        labels = [labels(1:i-1)   labels(i)  '-'         labels(i+1:end)];
+        offsets= [offsets(1:i-1); lnsval(1); offsets(i); offsets(i+1:end)];
+    end
+
+    % deal with reindexing from possible length change
+    pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+    pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+
+    % left line interrupts note: delete line onwards (ie, move offset)
+    offsets(pp1) = lnsval(1);
+
+    % right line interrupts note: delete before line (ie, move onset)
+    onsets(pp2) = lnsval(2);
+
+    return
