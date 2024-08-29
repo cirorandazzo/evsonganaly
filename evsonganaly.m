@@ -507,7 +507,11 @@ elseif (handles.DOEDIT)
             playFile(fName, lnsval(1), lnsval(2), hObject)    
 
         case 13  % return/enter - write new syllable without touching previous
-            [onsets, offsets, labels] = new_interval(onsets, offsets, labels, lnsval);
+            [onsets, offsets, labels] = edit_create(onsets, offsets, labels, lnsval);
+
+        case 109  % m: merge any wholly-contained syllables
+            [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval, Clipping=false);
+            [onsets, offsets, labels] = edit_create(onsets, offsets, labels, lnsval);
 
         case {68, 100}  % one of {d, numpad4} – delete
             [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval);
@@ -1721,7 +1725,7 @@ function handles = sortSegments(handles)
 
 return
 
-function [onsets, offsets, labels] = new_interval(onsets, offsets, labels, lnsval)
+function [onsets, offsets, labels] = edit_create(onsets, offsets, labels, lnsval)
     if (length(onsets)<1)
         % no intervals to begin with
         onsets = lnsval(1);
@@ -1737,36 +1741,49 @@ function [onsets, offsets, labels] = new_interval(onsets, offsets, labels, lnsva
 
     return
 
-function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval)
+function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval, options)
     
+    arguments
+        onsets;
+        offsets;
+        labels;
+        lnsval;
+        options.WholeNotes = true;
+        options.Clipping = true;
+    end
+
     assert(lnsval(1) <= lnsval(2))
 
     % find & delete all the intervals which are totally inside the bounds
-    pp = (onsets>=lnsval(1)) & (offsets<=lnsval(2));
-    onsets(pp)  = [];
-    offsets(pp) = [];
-    labels(pp)  = [];
-
-    pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
-    pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
-
-    % both lines occur during note - clip out center & create 2 notes.
-    for i = reshape(find(pp1 & pp2), 1, [])  % enforce row vector
-        % matlab runs an iteration of for loop with empty col vector >:(
-
-        onsets = [onsets(1:i-1);  onsets(i); lnsval(2);  onsets(i+1:end)];
-        labels = [labels(1:i-1)   labels(i)  '-'         labels(i+1:end)];
-        offsets= [offsets(1:i-1); lnsval(1); offsets(i); offsets(i+1:end)];
+    if options.WholeNotes
+        pp = (onsets>=lnsval(1)) & (offsets<=lnsval(2));
+        onsets(pp)  = [];
+        offsets(pp) = [];
+        labels(pp)  = [];
     end
 
-    % deal with reindexing from possible length change
-    pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
-    pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+    if options.Clipping  % clipping changes
+        pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+        pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
 
-    % left line interrupts note: delete line onwards (ie, move offset)
-    offsets(pp1) = lnsval(1);
+        % both lines occur during note - clip out center & create 2 notes.
+        for i = reshape(find(pp1 & pp2), 1, [])  % enforce row vector
+            % matlab runs an iteration of for loop with empty col vector >:(
 
-    % right line interrupts note: delete before line (ie, move onset)
-    onsets(pp2) = lnsval(2);
+            onsets = [onsets(1:i-1);  onsets(i); lnsval(2);  onsets(i+1:end)];
+            labels = [labels(1:i-1)   labels(i)  '-'         labels(i+1:end)];
+            offsets= [offsets(1:i-1); lnsval(1); offsets(i); offsets(i+1:end)];
+        end
+
+        % deal with reindexing from possible length change
+        pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+        pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+
+        % left line interrupts note: delete line onwards (ie, move offset)
+        offsets(pp1) = lnsval(1);
+
+        % right line interrupts note: delete before line (ie, move onset)
+        onsets(pp2) = lnsval(2);
+    end
 
     return
