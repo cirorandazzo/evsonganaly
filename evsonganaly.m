@@ -79,8 +79,12 @@ handles.DOLABEL=0;
 handles.DOEDIT=0;
 handles.EditBndLines=-1;
 handles.EditBnds=-1;
+
+% plotting parameters
+handles.SEGMENT_COLORMAP = 'colorcube';
 handles.SMUNDERSAMPLE=10;%undersample factor for smooth display - speeds everything up
-guidata(hObject, handles);handles=guidata(hObject);
+
+guidata(hObject, handles);
 
 %setup 2^8 element colormap
 axes(handles.SpecGramAxes);
@@ -92,7 +96,7 @@ linkaxes([handles.SpecGramAxes,handles.LabelAxes,handles.SmoothAxes],'x');
 
 %take care of intial contrast settings
 set(handles.MaxSpecValSlider,'Value',1.0);
-set(handles.MinSpecValSlider,'Value',0.67);
+set(handles.MinSpecValSlider,'Value',0.0);
 
 %defualt to show the trig times
 set(handles.ShowTrigBox,'Value',get(handles.ShowTrigBox,'Max'));
@@ -294,10 +298,15 @@ function LabelBtn_Callback(hObject, eventdata, handles)
 handles = sortSegments(handles);
 guidata(hObject, handles);
 
-if (get(handles.LabelBtn,'Value')==get(handles.LabelBtn,'Max'))
+if (get(handles.LabelBtn,'Value')==get(handles.LabelBtn,'Max'))  % if label button is on
+    % make sure edit off
+    set(handles.EditBtn,'Value', get(handles.EditBtn,'Min'))
+    EditBtn_Callback(hObject, [], handles);
+
     % turn zoom off
     zoom off;
     set(handles.XZoomBtn,'Value',get(handles.XZoomBtn,'Min'));
+
     handles.DOLABEL=1;
 else
     zoom xon;
@@ -305,14 +314,13 @@ else
     handles.DOLABEL=0;
 end
 guidata(hObject,handles);
-handles=guidata(hObject);
 
 curlabelind = handles.CurLabelInd;
 txtlbl = handles.LABELTAGS;
+
 if (handles.DOLABEL)
     axes(handles.SpecGramAxes);
     vv=axis;
-    
     
     ResetLabelInd(hObject,handles,vv);
     handles=guidata(hObject);
@@ -833,11 +841,9 @@ guidata(hObject,handles);
 return;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function SaveNotMatData(hObject,handles);
+function SaveNotMatData(hObject,handles)
 % save data to the not.mat file
 Fs = handles.FS;
-fname  = handles.INPUTFILES(handles.NFILE).fname;
-[tmp1,tmp2,tmpext]=fileparts(fname);
 	
 labels  = handles.LABELS;
 onsets  = handles.ONSETS*1e3; %put into ms
@@ -846,15 +852,12 @@ min_int = handles.MININT;
 min_dur = handles.MINDUR;
 threshold = handles.SEGTH;
 sm_win = handles.SM_WIN;
-filename = strsplit(fname, '/');
-if (strcmp(tmpext,'.filt'))
-	cmd = ['save ',filename{end},'.not.mat fname Fs labels '...
-		' min_dur min_int offsets onsets sm_win threshold'];
-else
-	cmd = ['save ',filename{end},'.not.mat fname Fs labels min_dur min_int ',...
-                      'offsets onsets sm_win threshold'];
-end
-eval(cmd);
+
+fname = handles.INPUTFILES(handles.NFILE).fname;
+savefile = strsplit(fname, '/');
+savefile = savefile{end} +".not.mat";
+
+save(savefile, 'fname', 'Fs', 'labels', 'min_dur', 'min_int', 'offsets', 'onsets', 'sm_win', 'threshold');
 return;
 
 

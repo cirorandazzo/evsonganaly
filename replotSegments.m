@@ -7,7 +7,8 @@ n_notes = length(handles.ONSETS);
 assert( n_notes == length(handles.OFFSETS) & n_notes == length(handles.LABELS))
 
 segs = zeros([n_notes, 3]);
-colors = lines(n_notes);
+colors = eval(handles.SEGMENT_COLORMAP + "(500)");  % preallocate a lot of colors so cmap doesn't change solely due to n_notes
+% colors = eval(handles.SEGMENT_COLORMAP + "(" + string(n_notes) + ")");
 
 axes(handles.SmoothAxes);  % select wave axes
 hold on;
@@ -23,23 +24,29 @@ catch
 end
 handles.EditBndLines=[];
 
+y = median(handles.SMOOTHDATA);
+
+[~, ii_sorted_onset] = sort(handles.ONSETS);
+
 for ii = 1:n_notes
+    note_num = ii_sorted_onset(ii);
+    
     mstyle = '|';
     msize = 30;
     lstyle = '-.';
     lw=1.5;
-    color = colors(ii, :);
+    color = colors(ii, :);  % assign colors in order of note onsets
 
     % onset point
-    segs(ii,1) = plot(handles.ONSETS(ii), handles.SEGTH, 'Marker', mstyle, 'Color', color, 'MarkerSize', msize);
+    segs(note_num,1) = plot(handles.ONSETS(note_num), y, 'Marker', mstyle, 'Color', color, 'MarkerSize', msize);
 
     % offset point
-    segs(ii,2) = plot(handles.OFFSETS(ii), handles.SEGTH, 'Marker', mstyle, 'Color', color, 'MarkerSize', msize);
+    segs(note_num,2) = plot(handles.OFFSETS(note_num), y, 'Marker', mstyle, 'Color', color, 'MarkerSize', msize);
 
     % line between points
-    segs(ii,3) = line( ...
-        [handles.ONSETS(ii), handles.OFFSETS(ii)], ...
-        [1,1] * handles.SEGTH, ...
+    segs(note_num,3) = line( ...
+        [handles.ONSETS(note_num), handles.OFFSETS(note_num)], ...
+        [1,1] * y, ...
         'Color', color, ...
         'LineStyle', lstyle, ...
         'LineWidth', lw ...

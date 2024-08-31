@@ -3,6 +3,7 @@
 # 2024.08.13 CDR
 
 /test_data/
+/*test data*/
 
 # Windows default autosave extension
 *.asv
