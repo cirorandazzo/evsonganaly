@@ -498,9 +498,15 @@ elseif (handles.DOEDIT)
     axes(handles.SmoothAxes);
     vv=axis;
     
+    % ensure these are ordered, else thaddeus will BREAK them.
+    if handles.EditBnds(2) < handles.EditBnds(1)
+        handles.EditBndLines = flip(handles.EditBndLines);
+        handles.EditBnds     = flip(handles.EditBnds);
+    end
+    
     lns = handles.EditBndLines;
     lnsval = handles.EditBnds;
-
+    
     switch editfuncfix
         case 27  % ESC - quit & do nothing.
             set(handles.EditBtn,'Value',get(handles.EditBtn,'Min'));
