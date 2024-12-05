@@ -571,7 +571,7 @@ c_uns = [0 0 0];
 % stops labeling, sets all characters to black
 set(handles.LabelBtn,'Value',get(handles.LabelBtn,'Min'));
 handles.DOLABEL=0;
-if (handles.CurLabelInd>0)
+if (handles.CurLabelInd>0) & ~isempty(handles.LABELTAGS)
     set(handles.LABELTAGS(handles.CurLabelInd),'Color',c_uns);
 end
 handles.CurLabelInd = 0;
