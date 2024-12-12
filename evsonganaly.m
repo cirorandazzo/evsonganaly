@@ -1735,20 +1735,24 @@ function handles = sortSegments(handles)
 return
 
 function [onsets, offsets, labels] = edit_create(onsets, offsets, labels, lnsval)
+
+    left = min(lnsval);
+    right = max(lnsval);
+    
     if (length(onsets)<1)
         % no intervals to begin with
-        onsets = lnsval(1);
-        offsets = lnsval(2);
+        onsets = left;
+        offsets = right;
         labels = '-';
     else
-        onsets  = [lnsval(1); onsets];
-        offsets = [lnsval(2); offsets];
+        onsets  = [left; onsets];
+        offsets = [right; offsets];
         labels  = ['-', labels];
     end
 
     assert(length(onsets) == length(offsets) && length(onsets) == length(labels));
 
-    return
+ return
 
 function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval, options)
     
