@@ -19,6 +19,8 @@ set(hObject,'BusyAction','Cancel');
 FNAME=handles.INPUTFILES(handles.NFILE).fname;
 chanspec=handles.ChanSpec;
 %PJ added addtlOut for reading triggers on separate channel
+
+%% Load Data
 [dat,Fs,DOFILT,ext,addtlOut]=ReadDataFile(FNAME,chanspec); 
 if strcmp(ext,'.cbin')
     [stim, fs]=ReadCbinFile(FNAME); % EK - for looking at additional input channels 7.15.19
@@ -49,6 +51,8 @@ if length(addtlOut) > 0
 else
     plotIntanTrigs = 0;
 end
+
+%% Make Spectrogram
 if ((get(handles.UseSpectBox,'Value')==get(handles.UseSpectBox,'Max'))&(exist([FNAME,'.spect'],'file')))    
     eval(['load -mat ',FNAME,'.spect']);
 else
@@ -95,6 +99,7 @@ end
 %end
 %set(handles.MinSpecValSlider,'Value',vtmp);
 
+%% Get .not.mat info
 %look for .not.mat file
 [tmp1,tmp2,tmpext]=fileparts(FNAME);
 if (exist([FNAME,'.not.mat'],'file'))
@@ -130,10 +135,6 @@ handles.SM_WIN=sm_win;
 handles.FS = Fs;
 
 guidata(hObject,handles);
-
-if (length(onsets)==0)
-    onsets=[t(1)];offsets=[t(end)];labels=['-'];
-end
 
 %% plot the smooth power
 dsamp=handles.SMUNDERSAMPLE;
@@ -177,7 +178,7 @@ clear sptemp;
 spectitle=FNAME;
 title(RemoveUnderScore(spectitle));
 
-%%
+%% Plot trigs
 handles = replotSegments(handles);
 guidata(hObject,handles);
 
