@@ -70,7 +70,8 @@ handles.INPUTFILES=INPUTFILES;
 handles.ChanSpec=ChanSpec;
 handles.NFILE=1;
 handles.SPECTH=0.01;
-handles.SEGTH=10000;
+% handles.SEGTH=2e-6;
+handles.SEGTH=1e6;
 handles.MININT=5.0;%in msec
 handles.MINDUR=30.0;%in msec
 handles.SM_WIN=2.0;
@@ -550,6 +551,9 @@ elseif (handles.DOEDIT)
                 offsets(pp) = [];
                 labels(pp)  = [];
             end
+
+        case {111}  % o - overlap
+            [onsets, offsets, labels] = edit_overlap(onsets, offsets, labels, lnsval);
 
         otherwise
             disp(string(editfunc) + "(" + string(editfuncfix) + ")" + "pressed. Unrecognized edit mode command.")
@@ -1767,7 +1771,7 @@ function [onsets, offsets, labels] = edit_create(onsets, offsets, labels, lnsval
 
     assert(length(onsets) == length(offsets) && length(onsets) == length(labels));
 
- return
+return
 
 function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval, options)
     
@@ -1812,6 +1816,33 @@ function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval
 
         % right line interrupts note: delete before line (ie, move onset)
         onsets(pp2) = lnsval(2);
+    end
+
+return
+
+function [onsets, offsets, labels] = edit_overlap(onsets, offsets, labels, lnsval)
+
+    arguments
+        onsets;
+        offsets;
+        labels;
+        lnsval;
+    end
+
+    lnsval = sort(lnsval);
+
+    pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+    pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+
+    i_note = find(pp1 & pp2);
+
+    if ~isscalar(i_note)
+        warning("Could not resolve overlap since there's more than one note!")
+    else
+        old_offset = offsets(i_note);
+        offsets(i_note) = lnsval(2);
+        
+        [onsets, offsets, labels] = edit_create(onsets, offsets, labels, [lnsval(1), old_offset]);
     end
 
     return
