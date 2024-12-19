@@ -188,6 +188,9 @@ guidata(hObject,handles);
 handles=guidata(hObject);
 SetLabelingOff(hObject,handles);
 
+% keep edit mode on after next file.
+EditBtn_Callback(hObject, [], handles);
+
 return;
 
 function DisableBtns(hObject,handles)
@@ -494,7 +497,7 @@ elseif (handles.DOEDIT)
     labels = handles.LABELS;
     editfunc = get(hObject,'CurrentCharacter');
     editfuncfix = fix(editfunc);
-        
+
     axes(handles.SmoothAxes);
     vv=axis;
     
@@ -513,6 +516,15 @@ elseif (handles.DOEDIT)
             EditBtn_Callback(hObject, [], handles);  % toggles button
             guidata(hObject, handles);
             return;
+
+        case 28  % left arrow - prev file, keep edit mode on.
+            PrevFileBtn_Callback(hObject, [], handles);
+            handles=guidata(hObject);
+
+        case 29  % right arrow - next file, keep edit mode on.
+            NextFileBtn_Callback(hObject, [], handles);
+            handles=guidata(hObject);
+            return
 
         case 32  % space - play selection
             nfile = handles.NFILE;
@@ -538,6 +550,9 @@ elseif (handles.DOEDIT)
                 offsets(pp) = [];
                 labels(pp)  = [];
             end
+
+        otherwise
+            disp(string(editfunc) + "(" + string(editfuncfix) + ")" + "pressed. Unrecognized edit mode command.")
     end
 
     handles.ONSETS = onsets;
