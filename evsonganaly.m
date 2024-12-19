@@ -1781,24 +1781,28 @@ function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval
         lnsval;
         options.WholeNotes = true;
         options.Clipping = true;
+        options.WarnOnMultiple = 3;
     end
 
+    assert(options.WholeNotes || options.Clipping);  % nothing gets deleted if both are false
     assert(lnsval(1) <= lnsval(2))
+
+    i_whole = (onsets>=lnsval(1)) & (offsets<=lnsval(2));
+    i_left = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+    i_right = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+
+    check_affected_notes(options, i_whole, i_left, i_right);
 
     % find & delete all the intervals which are totally inside the bounds
     if options.WholeNotes
-        pp = (onsets>=lnsval(1)) & (offsets<=lnsval(2));
-        onsets(pp)  = [];
-        offsets(pp) = [];
-        labels(pp)  = [];
+        onsets(i_whole)  = [];
+        offsets(i_whole) = [];
+        labels(i_whole)  = [];
     end
 
     if options.Clipping  % clipping changes
-        pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
-        pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
-
         % both lines occur during note - clip out center & create 2 notes.
-        for i = reshape(find(pp1 & pp2), 1, [])  % enforce row vector
+        for i = reshape(find(i_left & i_right), 1, [])  % enforce row vector
             % matlab runs an iteration of for loop with empty col vector >:(
 
             onsets = [onsets(1:i-1);  onsets(i); lnsval(2);  onsets(i+1:end)];
@@ -1807,14 +1811,14 @@ function [onsets, offsets, labels] = edit_delete(onsets, offsets, labels, lnsval
         end
 
         % deal with reindexing from possible length change
-        pp1 = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
-        pp2 = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
+        i_left = onsets<=lnsval(1) & offsets>=lnsval(1);  % ie, where left editline goes thru note
+        i_right = onsets<=lnsval(2) & offsets>=lnsval(2);  % ie, where right editline goes thru note
 
         % left line interrupts note: delete line onwards (ie, move offset)
-        offsets(pp1) = lnsval(1);
+        offsets(i_left) = lnsval(1);
 
         % right line interrupts note: delete before line (ie, move onset)
-        onsets(pp2) = lnsval(2);
+        onsets(i_right) = lnsval(2);
     end
 
 return
@@ -1845,3 +1849,22 @@ function [onsets, offsets, labels] = edit_overlap(onsets, offsets, labels, lnsva
     end
 
     return
+
+function check_affected_notes(options, i_whole, i_left, i_right)
+    total_affected = 0;
+
+    if options.WholeNotes
+        total_affected = total_affected + sum(i_whole);
+    end
+
+    if options.Clipping
+        total_affected = total_affected + sum(i_left) + sum(i_right);
+    end
+
+    if options.WarnOnMultiple > 0 && total_affected >= options.WarnOnMultiple
+        answer = questdlg("Confirm deletion of " + string(total_affected) + " notes", ...
+            'Confirm Delete', ...
+            'Cancel','Delete','Cancel');
+        
+        assert(strcmp(answer, 'Delete'), "User canceled delete. Hope this saved you a headache!" )
+    end
