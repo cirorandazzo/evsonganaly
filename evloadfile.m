@@ -69,7 +69,7 @@ set(handles.OKBtn,'Value',get(handles.OKBtn,'Min'));
 set(handles.CancelBtn,'Value',get(handles.CancelBtn,'Min'));
 set(handles.FindDirBtn,'Value',get(handles.FindDirBtn,'Min'));
 set(handles.FindFileBtn,'Value',get(handles.FindFileBtn,'Min'));
-set(handles.FileTypePulDown,'Value',2);
+set(handles.FileTypePulDown,'Value',2);  % {1: batch, 2: whole dir, 3: single file}
 set(handles.evloadfile,'Selected','on');
 set(handles.ChanSpec,'String','0');
 % Update handles structure
@@ -104,13 +104,16 @@ function FindFileBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+knownFileTypes = {'.wav', '.ebin', '.cbin', '.bbin'};
+
 % looks for a batch file or a single data file
 [fname,pathname]=uigetfile('*.*','Pick a FILE :','batch');
 FILENAME=fullfile(pathname,fname);
 set(handles.FileTxtBox,'String',FILENAME);
 set(handles.UseDirChkBox,'Value',get(handles.UseDirChkBox,'Min'));
 [atmp,btmp,ext]=fileparts(fname);
-if (strcmp(ext,'.wav')|strcmp(ext,'.ebin')|strcmp(ext,'.cbin')|strcmp(ext,'.bbin'))
+
+if any(matches(knownFileTypes, ext)) || endsWith(fname, '.not.mat')
     set(handles.FileTypePulDown,'Value',3);
 else
     set(handles.FileTypePulDown,'Value',1);
