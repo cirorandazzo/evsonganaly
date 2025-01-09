@@ -43,6 +43,11 @@ if exist('ALLDATA', 'var')
     end
 end
 
+% get audio file path from .not.mat
+if endsWith(fullfname, ".not.mat")
+    fullfname = getNotMatAudioFile(fullfname);
+end
+
 [pth,nm,ext]=fileparts(fullfname);
 
 switch char(lower(ext))
