@@ -901,42 +901,33 @@ function DeleteFileBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-NODOT = 0;
-fname  = handles.INPUTFILES(handles.NFILE).fname;
+audio_fname  = handles.INPUTFILES(handles.NFILE).fname;
 
-if endsWith(fname, ".not.mat")
-    error("DELETE is not implemented for .not.mat input.")
-end
-
-[pth,fnm,ext]=fileparts(fname);
-if (strcmp(handles.FILEEXT,'.wav'))
-	if (~strcmp(ext,'.wav'))
-		fnm = [fnm,ext];
-		NODOT = 1;
-	end
-end
-
-pth=[pth,filesep];
-if (NODOT == 0)
-qreply=questdlg(['Do you want to delete the files :',pth,fnm,'*'],...
-                'File Deletion Warning','Yes','Cancel','Cancel');
+if endsWith(audio_fname, ".not.mat")
+    notmat_fname = audio_fname;
+    audio_fname = getNotMatAudioFile(notmat_fname);
 else
-qreply=questdlg(['Do you want to delete the files :',pth,fnm],...
-                'File Deletion Warning','Yes','Cancel','Cancel');
+    notmat_fname = string(audio_fname) + ".not.mat";
 end
-if (strcmp(qreply,'Yes'))
-	if (NODOT==1)
-		delete([pth,fnm]);
-	else
-		pp = findstr(fnm,ext);
-		if (length(pp)>0)
-			delete([pth,fnm(1:pp(end)),'*']);
-        else
-			delete([pth,fnm,'.*']);
-		end
-	end
 
+to_delete = {audio_fname, notmat_fname};
+
+% can't delete something nonexistent
+file_exists = cellfun(@(x) exist(x, "file"), to_delete) == 2;
+to_delete = to_delete(file_exists);
+
+qreply=questdlg(horzcat({"Do you want to delete the file(s):"}, to_delete),...
+                'File Deletion Warning','Yes','Cancel','Cancel');
+
+if (strcmp(qreply,'Yes'))
+    for i_file = 1:length(to_delete)
+        delete(to_delete{i_file});
+    end
+
+    % Remove this file from list
 	handles.INPUTFILES(handles.NFILE)=[];
+
+    % load next file (or previous, if this was last)
 	if (handles.NFILE>length(handles.INPUTFILES))
 		handles.NFILE = length(handles.INPUTFILES);
 	end
