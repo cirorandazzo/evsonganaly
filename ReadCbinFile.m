@@ -1,7 +1,7 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%% READCBINFILE %%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [data,fs]=ReadCbinFile(fname)
+function [data,fs]=ReadCbinFile(fname);
 %[data,fs]=ReadCbinFile(fname);
 %
+
 if (exist(fname,'file'))
     fid=fopen(fname,'r','b');
     RData=fread(fid,inf,'short');
@@ -11,7 +11,7 @@ if (exist(fname,'file'))
     fs = 32000.000;
     Nchan = 2;
     Ndata = floor(length(RData)/Nchan);
-
+    fname=char(fname);
     pos = strfind(fname,'.cbin');
     if (length(pos)==0)
         pos = strfind(fname,'.bbin');
@@ -24,7 +24,7 @@ if (exist(fname,'file'))
     
     if (~exist(recfile,'file'))
         warning(['Could not file rec file: ',recfile,...
-            '- Assuming standard fs and 2 data channels']);
+            ' - Assuming standard fs and 2 data channels']);
     else
         recdata=readrecf(fname);
         Ndata = recdata.nsamp;
@@ -33,15 +33,17 @@ if (exist(fname,'file'))
     end
 
     if (Ndata*Nchan~=length(RData))
-        warning(['Data size does not match REC file-',...
+        disp(['Data size does not match REC file-',...
             'Returning EMPTY MATRIX!']);
-        Ndata = fix(round(length(RData)/Nchan));
-    end
+        data=[]
+    else
     
-    data = zeros([Ndata,Nchan]);
-    for ind=1:Nchan
-        data(:,ind)=RData(ind:Nchan:end);
-    end
+        data = zeros([Ndata,Nchan]);
+  
+        for ind=1:Nchan
+            data(:,ind)=RData(ind:Nchan:end);
+        end
+    end;
 else
     warning(['Could not find file: ',fname,'- skipping it']);
     data=[];fs=-1;

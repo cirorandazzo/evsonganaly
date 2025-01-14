@@ -116,9 +116,12 @@ end
 
 % look for existing .not.mat file
 if from_notmat  % input file is a .not.mat
+    Fsreal=Fs;
     load(handles.INPUTFILES(handles.NFILE).fname)
+    Fs=Fsreal;
     onsets=onsets*1e-3;
     offsets=offsets*1e-3;
+    
 elseif (exist([FNAME,'.not.mat'],'file'))  % most existing .not.mats
     load([FNAME,'.not.mat']);
     onsets=onsets*1e-3;
@@ -219,10 +222,13 @@ end
 drawnow;
 
 %if it is a catch trial put that in the box
-if strcmp(ext,'') %Krank file
+if strcmp(ext,'') || strcmp(ext,'.wav') %Krank file
     rdata = [];
 else
-    rdata=readrecf(FNAME);
+    try
+        rdata=readrecf(FNAME);
+    catch
+    end;
 end
 
 if (~isfield(rdata,'ttimes'))
@@ -276,8 +282,12 @@ return;
 
 function OutString=RemoveUnderScore(InString);
     % replaces all _ with \_ for proper display
-    
+
     TmpStr=InString;
+    if isstring(TmpStr)
+        TmpStr=char(TmpStr);
+    end;
+
     pos = findstr(InString,'_');
     for ind=1:length(pos)
         indu = pos(ind);
