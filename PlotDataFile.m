@@ -9,30 +9,43 @@ function PlotDataFile(hObject,handles)
 % - plot smoothed noise level
 % 
 % Modified by PJ to plot trigs from intan board
+% PJ added addtlOut for reading triggers on separate channel
 % 
-% Last edit 2024.08.13 CDR
 
 set(hObject,'Interruptible','off');
 set(hObject,'BusyAction','Cancel');
-%tempvar = handles.INPUTFILES;
-%save temp.mat tempvar
+
+%% get file info
 FNAME=handles.INPUTFILES(handles.NFILE).fname;
 chanspec=handles.ChanSpec;
-%PJ added addtlOut for reading triggers on separate channel
+
+%% deal with .not.mat input
+from_notmat = endsWith(FNAME, ".not.mat");
+
+if from_notmat
+    FNAME = getNotMatAudioFile(FNAME);
+end
 
 %% Load Data
 [dat,Fs,DOFILT,ext,addtlOut]=ReadDataFile(FNAME,chanspec); 
+
+%% load additional input channels from cbin
+% EK 2019.07.15
 if strcmp(ext,'.cbin')
-    [stim, fs]=ReadCbinFile(FNAME); % EK - for looking at additional input channels 7.15.19
+    [stim, ~]=ReadCbinFile(FNAME); 
     stim = stim(:, 2 : end);
     nChan = length(stim(1, :)); % number of additional input channels
 else
     stim = [];
     nChan = 0;
 end
-if length(addtlOut) > 0
-        for chan = 1 : nChan
-            if strcmp(ext,'.rhd')
+
+%% load intan trigs
+% PJ
+
+if ~isempty(addtlOut)
+    for chan = 1 : nChan
+        if strcmp(ext,'.rhd')
             try
                 trig{chan}.trigDat = addtlOut(:, chan);
                 [trig{chan}.pks,trig{chan}.locs] = findpeaks(trigDat);
@@ -41,13 +54,13 @@ if length(addtlOut) > 0
             catch
                 plotIntanTrigs = 0;
             end
-            elseif strcmp(ext,'.cbin')
-                trig{chan}.trigDat = stim(:, chan);
-                [trig{chan}.pks,trig{chan}.locs] = findpeaks(trig{chan}.trigDat,'MinPeakHeight',1e4);
-                trig{chan}.locsT = trig{chan}.locs./Fs; %s
-                plotIntanTrigs = 1;        
-            end
+        elseif strcmp(ext,'.cbin')
+            trig{chan}.trigDat = stim(:, chan);
+            [trig{chan}.pks,trig{chan}.locs] = findpeaks(trig{chan}.trigDat,'MinPeakHeight',1e4);
+            trig{chan}.locsT = trig{chan}.locs./Fs; %s
+            plotIntanTrigs = 1;        
         end
+    end
 else
     plotIntanTrigs = 0;
 end
@@ -100,17 +113,24 @@ end
 %set(handles.MinSpecValSlider,'Value',vtmp);
 
 %% Get .not.mat info
-%look for .not.mat file
-[tmp1,tmp2,tmpext]=fileparts(FNAME);
-if (exist([FNAME,'.not.mat'],'file'))
+
+% look for existing .not.mat file
+if from_notmat  % input file is a .not.mat
+    Fsreal=Fs;
+    load(handles.INPUTFILES(handles.NFILE).fname)
+    Fs=Fsreal;
+    onsets=onsets*1e-3;
+    offsets=offsets*1e-3;
+    
+elseif (exist([FNAME,'.not.mat'],'file'))  % most existing .not.mats
     load([FNAME,'.not.mat']);
     onsets=onsets*1e-3;
     offsets=offsets*1e-3;
-elseif ((strcmp(tmpext,'.filt')) & (exist([FNAME(1:end-4),'not.mat'],'file')))
-		load([FNAME(1:end-4),'not.mat']);
-		onsets=onsets*1e-3;
-		offsets=offsets*1e-3;
-else
+elseif ((strcmp(ext,'.filt')) & (exist([FNAME(1:end-4),'not.mat'],'file')))
+	load([FNAME(1:end-4),'not.mat']);
+	onsets=onsets*1e-3;
+	offsets=offsets*1e-3;
+else  % no existing not mat file
     %recdata=readrecf(FNAME);
     %if (isfield(recdata,'adfreq'))
     %	    Fs = recdata.adfreq;
@@ -124,6 +144,7 @@ else
     labels = char(ones([1,length(onsets)])*fix('-'));
     %ONSETS AND OFFSETS COME IN SECONDS NOT MS!
 end
+
 handles.SMOOTHDATA = sm;
 handles.ONSETS=onsets;
 handles.OFFSETS=offsets;
@@ -201,10 +222,13 @@ end
 drawnow;
 
 %if it is a catch trial put that in the box
-if strcmp(ext,'') %Krank file
+if strcmp(ext,'') || strcmp(ext,'.wav') %Krank file
     rdata = [];
 else
-    rdata=readrecf(FNAME);
+    try
+        rdata=readrecf(FNAME);
+    catch
+    end;
 end
 
 if (~isfield(rdata,'ttimes'))
@@ -258,8 +282,12 @@ return;
 
 function OutString=RemoveUnderScore(InString);
     % replaces all _ with \_ for proper display
-    
+
     TmpStr=InString;
+    if isstring(TmpStr)
+        TmpStr=char(TmpStr);
+    end;
+
     pos = findstr(InString,'_');
     for ind=1:length(pos)
         indu = pos(ind);

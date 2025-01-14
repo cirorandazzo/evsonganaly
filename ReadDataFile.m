@@ -1,4 +1,4 @@
-function [dat,fs,DOFILT,ext,varargout]=ReadDataFile(fullfname,chanspec,ALLDATA);
+function [dat,fs,DOFILT,ext,varargout]=ReadDataFile(fullfname,chanspec,ALLDATA)
 %% Modified by PJ to plot trigs from intan board
 %[dat,Fs,DOFILT,ext]=ReadDataFile(fullfname,chanspec,ALLDATA);
 %
@@ -23,63 +23,76 @@ DOFILT=1;
 varargout = {};
 
 %Defualt is 0 not 0r!
-if (~exist('chanspec'))
-    chan=0;ISR=0;
-elseif (length(chanspec)<1)
-    chan=0;ISR=0;
+if ~exist('chanspec') || isempty(chanspec)
+    warning("No chanspec provided! Defaulting to 0.")
+    chan=0;
+    ISR=0;
+elseif isnumeric(chanspec)
+    chan=chanspec;
+elseif strcmp(chanspec(end),'r')
+    chan = str2num(chanspec(1:end-1));
+    ISR = 1;
 else
-    if (strcmp(chanspec(end),'r'))
-        chan = str2num(chanspec(1:end-1));
-        ISR = 1;
-    else
-        chan=str2num(chanspec);
-        ISR = 0;
-    end
+    chan=str2num(chanspec);
+    ISR = 0;
 end
 
-if (exist('ALLDATA'))
+if exist('ALLDATA', 'var')
     if (ALLDATA==1)
         chan = -1;
     end
 end
 
-[pth,nm,ext]=fileparts(fullfname);
-%if (length(ext)<1)
-%    ext='.wav';
-%end
-%ext = lower(ext);
+% get audio file path from .not.mat
+if endsWith(fullfname, ".not.mat")
+    fullfname = getNotMatAudioFile(fullfname);
+end
 
-if (strcmp(ext,'.wav'))
-    [dat,fs]=audioread(fullfname);
-    ISR=0;chan=0;
-elseif (strcmp(ext,'.ebin'))
-    [dat,fs]=ReadEbinFile(fullfname);
-elseif (strcmp(ext,'.cbin')|strcmp(ext,'.bbin'))
-    [dat,fs]=ReadCbinFile(fullfname);
-    if length(dat(1, :)) > 1
-        varargout{1} = dat(:,2); % Triggers
-    end
-elseif (strcmp(ext,'.filt'))
-    [dat,fs]=ReadFilt(fullfname);
-    DOFILT=0;chan=0;
-elseif (strcmp(ext,'.raw'))
-    [dat,fs]=ReadRawFile(fullfname);
-    ISR=0;chan=0;
-elseif (strcmp(ext,'.rhd'))
-    fullfname=[pth '/' nm ext]
-    %[dat,fs]=IntanRHDReadSong('',fullfname);
-    [freq,dat] = pj_readIntanNoGui_AudioOnly(fullfname,1);
-    [o1,o2,digDat,o3] = pj_readIntanNoGui(fullfname,0);
-    varargout{1} = digDat; % Triggers
-    % Try to find 
-    fs = freq.amplifier_sample_rate;
-    ISR=0;chan=-1;
-elseif strcmp(ext,'') %For krank files
-    [dat,fs] = ReadOKrankData(nm,1);
-else
-    [dat,fs]=audioread(fullfname);
-    ext = '.wav';
-    ISR=0;chan=0;
+[pth,nm,ext]=fileparts(fullfname);
+
+switch char(lower(ext))
+    case '.wav'
+        [dat,fs]=audioread(fullfname);
+        ISR=0;chan=0;
+
+    case '.ebin'
+        [dat,fs]=ReadEbinFile(fullfname);
+
+    case {'.cbin', '.bbin'}
+        [dat,fs]=ReadCbinFile(fullfname);
+        if length(dat(1, :)) > 1
+            varargout{1} = dat(:,2); % Triggers
+        end
+
+    case '.filt'
+        [dat,fs]=ReadFilt(fullfname);
+        DOFILT=0;chan=0;
+
+    case '.raw'
+        [dat,fs]=ReadRawFile(fullfname);
+        ISR=0;chan=0;
+
+    case '.rhd'
+        fullfname=[pth '/' nm ext]
+        %[dat,fs]=IntanRHDReadSong('',fullfname);
+        [freq,dat] = pj_readIntanNoGui_AudioOnly(fullfname,1);
+        [o1,o2,digDat,o3] = pj_readIntanNoGui(fullfname,0);
+        varargout{1} = digDat; % Triggers
+        % Try to find 
+        fs = freq.amplifier_sample_rate;
+        ISR=0;chan=-1;
+
+    case '' %For krank files
+        [dat,fs] = ReadOKrankData(nm,1);
+
+    otherwise
+        [dat,fs]=audioread(fullfname);
+        ext = '.wav';
+        ISR=0;chan=0;
+end
+
+if ~any(matches({'.cbin', '.bbin'}, ext))
+    warning("Chanspec was probably ignored. Hope you like channel 0 (or -1, if you passed in an rhd file).")
 end
 
 if length(varargout) == 0

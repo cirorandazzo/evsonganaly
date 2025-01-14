@@ -878,10 +878,20 @@ threshold = handles.SEGTH;
 sm_win = handles.SM_WIN;
 
 fname = handles.INPUTFILES(handles.NFILE).fname;
-savefile = strsplit(fname, '/');
-savefile = savefile{end} +".not.mat";
 
-save(savefile, 'fname', 'Fs', 'labels', 'min_dur', 'min_int', 'offsets', 'onsets', 'sm_win', 'threshold');
+% if notmat input: save to existing path & don't change saved audio fname
+if endsWith(fname, ".not.mat")
+    savefile = fname;
+else
+    savefile = strsplit(fname, '/');
+    savefile = savefile{end} +".not.mat";
+    
+    save(savefile, 'fname')
+end
+
+save(savefile, ...
+    'Fs', 'labels', 'min_dur', 'min_int', 'offsets', 'onsets', 'sm_win', 'threshold', ...
+    '-append');
 return;
 
 
@@ -891,37 +901,33 @@ function DeleteFileBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-NODOT = 0;
-fname  = handles.INPUTFILES(handles.NFILE).fname;
-[pth,fnm,ext]=fileparts(fname);
-if (strcmp(handles.FILEEXT,'.wav'))
-	if (~strcmp(ext,'.wav'))
-		fnm = [fnm,ext];
-		NODOT = 1;
-	end
-end
+audio_fname  = handles.INPUTFILES(handles.NFILE).fname;
 
-pth=[pth,filesep];
-if (NODOT == 0)
-qreply=questdlg(['Do you want to delete the files :',pth,fnm,'*'],...
-                'File Deletion Warning','Yes','Cancel','Cancel');
+if endsWith(audio_fname, ".not.mat")
+    notmat_fname = audio_fname;
+    audio_fname = getNotMatAudioFile(notmat_fname);
 else
-qreply=questdlg(['Do you want to delete the files :',pth,fnm],...
-                'File Deletion Warning','Yes','Cancel','Cancel');
+    notmat_fname = string(audio_fname) + ".not.mat";
 end
-if (strcmp(qreply,'Yes'))
-	if (NODOT==1)
-		delete([pth,fnm]);
-	else
-		pp = findstr(fnm,ext);
-		if (length(pp)>0)
-			delete([pth,fnm(1:pp(end)),'*']);
-        else
-			delete([pth,fnm,'.*']);
-		end
-	end
 
+to_delete = {audio_fname, notmat_fname};
+
+% can't delete something nonexistent
+file_exists = cellfun(@(x) exist(x, "file"), to_delete) == 2;
+to_delete = to_delete(file_exists);
+
+qreply=questdlg(horzcat({"Do you want to delete the file(s):"}, to_delete),...
+                'File Deletion Warning','Yes','Cancel','Cancel');
+
+if (strcmp(qreply,'Yes'))
+    for i_file = 1:length(to_delete)
+        delete(to_delete{i_file});
+    end
+
+    % Remove this file from list
 	handles.INPUTFILES(handles.NFILE)=[];
+
+    % load next file (or previous, if this was last)
 	if (handles.NFILE>length(handles.INPUTFILES))
 		handles.NFILE = length(handles.INPUTFILES);
 	end
@@ -966,60 +972,6 @@ if (~isCancel)
 	SetLabelingOff(hObject,handles);
 end
 return;
-
-
-% --- Executes on button press in CropDataBtn.
-function CropDataBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to CropDataBtn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% takes 2 data point for x and y from the specgram window and only keeps
-% the data in between the two markers, saves the files back out
-%zoom off;
-%set(handles.XZoomBtn,'Value',get(handles.XZoomBtn,'Min'));%
-%
-%axes(handles.SpecGramAxes);
-%[x,y]=ginput(2);
-%xx = sort(x);x=xx;
-
-%sp_sz = size(handles.SPECGRAMVALS);
-
-%inds = floor(x*fs);
-%if (inds(1)<1)
-%    inds(1) = 1;
-%end
-
-%if (inds(2)>sp_sz(2))
-%    inds(2) = sp_sz(2);
-%end
-
-%axes(handles.SpecGramAxes);vv=axis;
-%axis([inds,vv(3:4)]);
-
-%qreply=questdlg(['Does this look right for cropping? :',pth,fnm,'.*'],...
-%                'File Crop Warning','Yes','Cancel','Cancel');
-%if (strcmp(qreply,'Yes'))
- %   sptmp = handles.SPECGRAMVALS;
-  %  sptmp = sptmp(:,[inds(1):inds(2)]);
-   % handles.SPECGRAMVALS = sptmp;
-   % clear sptmp;
-    
-   % fname=handles.INPUTFILES(handles.NFILE).fname;
-   % [dat,fs]=ReadDataFile(fname,-1);
-   % dat = dat(inds(1):inds(2),:);
-   % fid2=fopen(fname,'w','b');
-   % fwrite(fid2,dat,'float');
-   % fclose(fid2);
-    
-   % recdata=readrecf(fname);
-   % recdata.ttimes = recdata.ttimes-((inds(1)-1)/fs)
-   % recdata.nsamp = size(dat,1);
-   % wrtrecf(fname,recdata);
-%end
-
-%return;
-
 
 % --- Executes on button press in ResegmBtn.
 function ResegmBtn_Callback(hObject, eventdata, handles)
@@ -1131,7 +1083,11 @@ qreply=questdlg(['Do you want to crop this file at these boundaries?'],...
     'File Crop Warning','Yes','Cancel','Cancel');
 if (strcmp(qreply,'Yes'))
     fname = handles.INPUTFILES(handles.NFILE).fname;
-    if (~strcmp(handles.FILEEXT,'.wav'))|(~strcmp(handles.ChanSpec,'w'))
+
+    if endsWith(fname, ".not.mat")
+        error("CROP is not implemented for .not.mat input files!")
+
+    elseif (~strcmp(handles.FILEEXT,'.wav'))|(~strcmp(handles.ChanSpec,'w'))
 	    rdata = readrecf(fname);
     
 	    if (~isfield(rdata,'nchan'))
@@ -1141,6 +1097,7 @@ if (strcmp(qreply,'Yes'))
 	    end
     else
 	    nchan = 1;
+
     end
     
     [dat,fs,ext]=ReadDataFile(fname,'',1);
@@ -1568,9 +1525,6 @@ function PlayAudioFullBtn_Callback(hObject, eventdata, handles)
     fName = handles.INPUTFILES(nfile).fname;
 
     playFile(fName, 0, inf, hObject); % play whole clip
-    
-
-
 return
 
 function playFile(fName, t0, tf, hObject)
