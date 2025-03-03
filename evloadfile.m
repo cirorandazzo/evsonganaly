@@ -253,17 +253,13 @@ if (get(handles.UseDirChkBox,'Value')==get(handles.UseDirChkBox,'Max'))
     end
     
     extname=get(handles.ExtTxtBox,'String');
-    p = findstr(extname,'.');
-    if (length(p)==0)
-        if (strcmp(extname(1),'*'))
-            extname = ['*.',extname(2:end)];
-        else
-            extname = ['*.',extname];
-        end
-    else
-        extname = ['*',extname(p(end):end)];
+
+    % enforce asterisk for inputted extension
+    if ~strcmp(extname(1), "*")
+        extname = strcat("*", extname);
     end
-    dirfiles = dir([dirname,extname]);
+
+    dirfiles = dir(fullfile(dirname, extname));
     FILENAMELIST=[];
     for ind=1:length(dirfiles)
             FILENAMELIST(ind).fname = [dirname,dirfiles(ind).name];
