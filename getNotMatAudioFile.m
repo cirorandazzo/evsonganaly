@@ -8,13 +8,34 @@ function [audio_fname] = getNotMatAudioFile(notmat_fname)
 % it easier to change fieldname/other behavior later, if need be. 
 % 
 
-load(notmat_fname, 'fname');
+try  % load audio fname from notmat
+    load(notmat_fname, 'fname');
 
-assert( ...
-    exist('fname', 'var'), ...
-    "Provided .not.mat does not have field `fname`! File: " + notmat_fname ...
-);
+    assert( ...
+        exist('fname', 'var'), ...
+        "Provided .not.mat does not have field `fname`! File: " + notmat_fname ...
+    );
+
+    assert( ...
+        exist(fname, 'file'), ...
+        "Audio file does not exist! File: " + fname ...
+    );
+
+catch  % check locally for audio.
+    disp("Trying matching audio file in local dir...")
+
+    fname = replace(notmat_fname, ".not.mat", "");
+
+    assert( ...
+        exist(fname, 'file'), ...
+        "Couldn't find audio locally either! Tried file: " + fname ...
+    );
+
+    % if local audio file does exist, update audio path saved notmat
+    save(notmat_fname, "fname", "-append")
+end
 
 audio_fname = fname;
+
 end
 
