@@ -23,7 +23,11 @@ Audio segmentation & labeling software developed in Brainard Lab at UCSF, initia
     - Enter: creates new note at selection. Does not affect notes in window
     - M: creates new note at selection. Merges all notes wholly contained in window (does not affect notes partially in window).
     - D: Deletes any wholly-contained notes AND clips any partially-contained notes.
-    - C*: Deletes any wholly-contained notes, does not touch partially-contained notes (I think...)
+    - C: Deletes everything except currently selected notes.
+    - O: Overlap mode. See image below.
     - Space: plays selected audio
 
-* indicates that I haven't confirmed this is the actual function, but it seems like what the code is doing
+(*) indicates that I haven't confirmed this is the actual function, but it seems like what the code is doing
+
+Overlap mode:
+<img width="1202" height="795" alt="overlap_mode" src="https://github.com/user-attachments/assets/09fe67b9-1a68-46e5-96a7-9f5a93a30017" />
